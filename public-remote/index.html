@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TV Remote</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="remote.css" />
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+  </head>
+  <body>
+    <main class="remote-shell">
+      <section class="remote-body" aria-label="TV remote control">
+        <div class="remote-main">
+          <header class="remote-header">
+            <div class="remote-brand">
+              <p class="remote-mini">PI TV</p>
+              <h1>Remote</h1>
+            </div>
+          </header>
+
+          <section class="remote-section keypad-cluster">
+            <div class="section-label">Channels</div>
+            <div class="number-grid keypad-grid">
+              <div id="channelButtons"></div>
+              <button id="newsButton" class="btn channel-key news-key" type="button" aria-label="News" title="News">
+                <span class="channel-number remote-news-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false">
+                    <rect x="4.5" y="5.5" width="15" height="13" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.8"></rect>
+                    <rect x="7.5" y="8.3" width="4.2" height="6.2" rx="0.7" fill="currentColor"></rect>
+                    <path d="M13.5 9h3.3M13.5 11.7h3.3M7.5 16.5h9.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+                  </svg>
+                </span>
+              </button>
+              <button id="weatherButton" class="btn channel-key weather-key" type="button" aria-label="Weather" title="Weather">
+                <span class="channel-number remote-weather-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false">
+                    <circle cx="9" cy="9" r="3.2" fill="none" stroke="currentColor" stroke-width="1.8"></circle>
+                    <path d="M9 3.2v2.1M9 12.7v2.1M3.2 9h2.1M12.7 9h2.1M4.8 4.8l1.5 1.5M11.7 11.7l1.5 1.5M13.2 4.8l-1.5 1.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+                    <path d="M12.8 16.8a2.9 2.9 0 0 1 2.8-2.3 3.5 3.5 0 0 1 3.4 3.5 3 3 0 0 1-3 3H8.9a2.7 2.7 0 0 1-.3-5.4 4.4 4.4 0 0 1 4.2-3.2 4.1 4.1 0 0 1 4 3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+                  </svg>
+                </span>
+              </button>
+              <button id="emergencyButton" class="btn channel-key emergency-key" type="button" aria-label="Emergency" title="Emergency">
+                <span class="channel-number remote-phone-icon" aria-hidden="true">☎</span>
+              </button>
+            </div>
+          </section>
+
+          <section class="remote-section transport-cluster">
+            <div class="section-label">Playback</div>
+            <div class="transport-pad">
+              <button id="startButton" class="btn transport-btn play-btn" type="button" aria-label="Play" title="Play">
+                <span class="transport-icon" aria-hidden="true">&#9654;</span>
+                <span class="transport-label">Play</span>
+              </button>
+              <button id="pauseButton" class="btn transport-btn pause-btn" type="button" aria-label="Pause" title="Pause">
+                <span class="transport-icon" aria-hidden="true">&#10074;&#10074;</span>
+                <span class="transport-label">Pause</span>
+              </button>
+            </div>
+          </section>
+
+          <section class="remote-section weather-cluster">
+            <div class="weather-controls">
+              <label class="picker">
+                <span>City</span>
+                <select id="weatherCitySelect" aria-label="Select weather city"></select>
+              </label>
+            </div>
+          </section>
+
+          <section class="remote-section status-panel">
+            <div class="section-label">Status</div>
+            <div id="statusText">Connecting...</div>
+          </section>
+        </div>
+
+        <aside class="remote-side" aria-label="Volume control">
+          <div class="menu-wrap side-actions">
+            <button
+              id="menuButton"
+              class="btn utility-cap menu-cap"
+              type="button"
+              aria-label="Open menu"
+              aria-expanded="false"
+              aria-controls="remoteMenu"
+              title="Open menu"
+            >
+              <span class="menu-icon" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
+              </span>
+            </button>
+            <button id="menuBackdrop" class="menu-backdrop" type="button" hidden aria-label="Close menu"></button>
+            <div id="remoteMenu" class="remote-menu" hidden>
+              <button id="powerButton" class="btn menu-item power-item" type="button" aria-label="Turn screen off" title="Turn screen off">
+                <span class="menu-item-icon power-icon" aria-hidden="true"></span>
+                <span class="menu-item-label">Power</span>
+              </button>
+              <button id="fullscreenButton" class="btn menu-item" type="button" aria-label="Toggle fullscreen" title="Toggle fullscreen">
+                <span class="menu-item-icon fullscreen-icon" aria-hidden="true">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </span>
+                <span class="menu-item-label">Fullscreen</span>
+              </button>
+              <button id="refreshButton" class="btn menu-item" type="button" aria-label="Refresh TV" title="Refresh TV">
+                <span class="menu-item-icon refresh-icon" aria-hidden="true"></span>
+                <span class="menu-item-label">Refresh</span>
+              </button>
+              <button id="backButton" class="btn menu-item" type="button" aria-label="Browser back" title="Browser back">
+                <span class="menu-item-icon back-icon" aria-hidden="true"></span>
+                <span class="menu-item-label">Back</span>
+              </button>
+              <button id="minimizeButton" class="btn menu-item" type="button" aria-label="Minimize TV" title="Minimize TV">
+                <span class="menu-item-icon minimize-icon" aria-hidden="true"></span>
+                <span class="menu-item-label">Minimize</span>
+              </button>
+              <button id="audioRedirectButton" class="btn menu-item" type="button" aria-label="Audio redirect" title="Audio redirect">
+                <span class="menu-item-icon audio-icon" aria-hidden="true"></span>
+                <span class="menu-item-label">Audio Redirect</span>
+              </button>
+              <button id="beepButton" class="btn menu-item" type="button" aria-label="Beep test" title="Beep test">
+                <span class="menu-item-icon beep-icon" aria-hidden="true"></span>
+                <span class="menu-item-label">Beep</span>
+              </button>
+            </div>
+          </div>
+          <section class="remote-section volume-cluster">
+            <div class="volume-head">
+              <div class="section-label">Volume</div>
+              <div id="volumeLabel">70%</div>
+              <button id="muteButtonRemote" class="btn mute-toggle" type="button" aria-label="Mute audio" title="Mute audio">
+                <span class="mute-toggle-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="M4 14h3.4l4.2 3.8V6.2L7.4 10H4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>
+                    <path d="M15.2 9.2l4.6 5.6M19.8 9.2l-4.6 5.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+                  </svg>
+                </span>
+              </button>
+            </div>
+            <div class="volume-panel">
+              <div class="volume-rail">
+                <span class="volume-mark volume-up">+</span>
+                <input id="volumeSlider" type="range" min="0" max="100" step="1" value="70" />
+                <span class="volume-mark volume-down">-</span>
+              </div>
+            </div>
+          </section>
+        </aside>
+      </section>
+    </main>
+
+    <audio id="audioRedirectPlayer" hidden playsinline preload="none"></audio>
+    <script src="remote.js"></script>
+  </body>
+</html>

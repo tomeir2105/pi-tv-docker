@@ -1,0 +1,11 @@
+.git
+.gitignore
+node_modules
+logs
+.env
+.tmp
+*.log
+.DS_Store
+helpers/stream_debug/output
+helpers/stream_debug/__pycache__
+scripts/__pycache__

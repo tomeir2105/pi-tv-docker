@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PI TV</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Special+Elite&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+  </head>
+  <body>
+    <div class="room-glow" aria-hidden="true"></div>
+
+    <main class="tv-shell">
+      <section class="tv-cabinet" aria-label="Old TV cabinet">
+        <div class="bezel">
+          <div class="screen-wrap">
+            <div class="screen-effects" aria-hidden="true">
+              <div class="scanlines"></div>
+              <div class="vignette"></div>
+              <div class="flicker"></div>
+            </div>
+
+            <div class="video-wrap" id="videoWrap">
+              <video id="player" controls autoplay playsinline></video>
+            </div>
+
+            <div class="weather-view hidden" id="weatherView">
+              <div class="weather-layout">
+                <header class="weather-header">
+                  <div class="weather-header-copy">
+                    <div class="weather-kicker">Selected City</div>
+                    <h2 id="weatherCityTitle">Weather</h2>
+                  </div>
+                  <div class="weather-header-actions">
+                    <label class="weather-city-picker">
+                      <span>City</span>
+                      <select id="weatherCitySelect" aria-label="Select weather city"></select>
+                    </label>
+                    <button class="weather-favorite" id="weatherFavoriteButton" type="button" aria-label="Favorite city" title="Favorite city">
+                      ★
+                    </button>
+                  </div>
+                </header>
+
+                <section class="weather-hero">
+                  <div class="weather-temp-wrap">
+                    <div class="weather-icon" id="weatherIcon" aria-hidden="true">☀</div>
+                    <div>
+                      <div class="weather-temp" id="weatherTemp">--°</div>
+                      <div class="weather-condition" id="weatherCondition">Loading current conditions...</div>
+                    </div>
+                  </div>
+                  <div class="weather-hero-meta">
+                    <div class="hero-stat">
+                      <span class="hero-label">Feels Like</span>
+                      <strong id="weatherFeelsLike">--°</strong>
+                    </div>
+                    <div class="hero-stat">
+                      <span class="hero-label">High / Low</span>
+                      <strong id="weatherHighLow">-- / --</strong>
+                    </div>
+                  </div>
+                </section>
+
+                <div class="weather-insight" id="weatherInsight">Gathering weather insight...</div>
+
+                <section class="weather-card-grid" id="weatherDetailsGrid">
+                  <article class="metric-card metric-primary">
+                    <div class="metric-label">Wind</div>
+                    <div class="metric-value" id="windValue">--</div>
+                    <div class="metric-note" id="windNote">--</div>
+                  </article>
+                  <article class="metric-card metric-primary">
+                    <div class="metric-label">Humidity</div>
+                    <div class="metric-value" id="humidityValue">--</div>
+                    <div class="metric-note" id="humidityNote">--</div>
+                  </article>
+                  <article class="metric-card metric-secondary">
+                    <div class="metric-label">Cloud Cover</div>
+                    <div class="metric-value" id="cloudValue">--</div>
+                    <div class="metric-note" id="cloudNote">--</div>
+                  </article>
+                  <article class="metric-card metric-primary">
+                    <div class="metric-label">Rain Chance</div>
+                    <div class="metric-value" id="rainChanceValue">--</div>
+                    <div class="metric-note" id="rainChanceNote">--</div>
+                  </article>
+                  <article class="metric-card metric-secondary">
+                    <div class="metric-label">UV Index</div>
+                    <div class="metric-value" id="uvValue">--</div>
+                    <div class="metric-note" id="uvNote">--</div>
+                  </article>
+                  <article class="metric-card metric-primary">
+                    <div class="metric-label">AQI</div>
+                    <div class="metric-value" id="aqiValue">--</div>
+                    <div class="metric-note" id="aqiNote">--</div>
+                  </article>
+                  <article class="metric-card metric-secondary">
+                    <div class="metric-label">Pressure</div>
+                    <div class="metric-value" id="pressureValue">--</div>
+                    <div class="metric-note" id="pressureNote">--</div>
+                  </article>
+                </section>
+
+                <div class="forecast-pair">
+                  <section class="forecast-section hourly-section">
+                    <div class="forecast-header">
+                      <h3>Hourly Forecast</h3>
+                      <span>Next hours</span>
+                    </div>
+                    <div class="hourly-forecast" id="hourlyForecast"></div>
+                  </section>
+
+                  <section class="forecast-section daily-section">
+                    <div class="forecast-header">
+                      <h3>Weekly Forecast</h3>
+                      <span>Next 5 days</span>
+                    </div>
+                    <div class="forecast" id="forecastList"></div>
+                  </section>
+                </div>
+              </div>
+            </div>
+
+            <div class="alerts-view hidden" id="alertsView">
+              <div class="alerts-layout">
+                <header class="alerts-header">
+                  <div class="alerts-summary-line" id="alertsTitle">Pikud HaOref: monitoring for active alerts.</div>
+                </header>
+
+                <div class="alerts-board">
+                  <div class="alerts-column alerts-column-main">
+                    <section class="alerts-section alerts-news-section">
+                      <div class="forecast-header">
+                        <h3>Flash News</h3>
+                        <span id="alertsNewsMeta">Gathering headlines</span>
+                      </div>
+                      <div class="alerts-news-list" id="alertsNewsList"></div>
+                    </section>
+                  </div>
+
+                  <div class="alerts-column alerts-column-side">
+                    <section class="alerts-section alerts-active-section">
+                      <div class="forecast-header">
+                        <h3>Active Areas</h3>
+                        <span id="alertsUpdatedAt">Waiting for update</span>
+                      </div>
+                      <div class="alerts-active-list" id="alertsActiveList"></div>
+                    </section>
+
+                    <section class="alerts-section alerts-history-section">
+                      <div class="forecast-header">
+                        <h3>Recent Alarm List</h3>
+                        <span id="alertsHistoryCount">0 items</span>
+                      </div>
+                      <div class="alerts-history-list" id="alertsHistoryList"></div>
+                    </section>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="emergency-view hidden" id="emergencyView">
+              <div class="emergency-layout">
+                <header class="emergency-header">
+                  <div class="emergency-kicker">Emergency Contacts</div>
+                  <h2>Important Numbers</h2>
+                  <p>For quick access during urgent situations.</p>
+                </header>
+
+                <div class="emergency-grid" id="emergencyGrid" dir="rtl"></div>
+                <div class="emergency-empty hidden" id="emergencyEmpty">Add `EMERGENCY_CONTACTS` in your local `.env` to show emergency numbers here.</div>
+              </div>
+            </div>
+
+            <div class="standby-screen hidden" id="standbyScreen">
+              <div class="standby-label">TV Stopped</div>
+              <div class="standby-hint">Press Start on the remote to resume.</div>
+            </div>
+
+            <div class="sleep-screen hidden" id="sleepScreen">
+              <div class="sleep-label">Dark Mode</div>
+              <div class="sleep-hint">Press any remote button or tap a key to wake the TV.</div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="control-panel" aria-label="TV controls">
+          <h1 class="logo">PI TV</h1>
+
+          <section class="channel-panel" aria-label="Channel controls">
+            <div class="channel-panel-label">Channels</div>
+            <div class="btn-group">
+              <div id="channelButtons"></div>
+              <button class="nav-btn news-btn" id="newsButton" type="button" aria-label="News" title="News">
+                <span class="channel-number news-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false">
+                    <rect x="4.5" y="5.5" width="15" height="13" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.8"></rect>
+                    <rect x="7.5" y="8.3" width="4.2" height="6.2" rx="0.7" fill="currentColor"></rect>
+                    <path d="M13.5 9h3.3M13.5 11.7h3.3M7.5 16.5h9.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+                  </svg>
+                </span>
+              </button>
+              <button class="nav-btn weather-btn" id="weatherButton" type="button" aria-label="Weather" title="Weather">
+                <span class="channel-number weather-nav-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false">
+                    <circle cx="9" cy="9" r="3.2" fill="none" stroke="currentColor" stroke-width="1.8"></circle>
+                    <path d="M9 3.2v2.1M9 12.7v2.1M3.2 9h2.1M12.7 9h2.1M4.8 4.8l1.5 1.5M11.7 11.7l1.5 1.5M13.2 4.8l-1.5 1.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+                    <path d="M12.8 16.8a2.9 2.9 0 0 1 2.8-2.3 3.5 3.5 0 0 1 3.4 3.5 3 3 0 0 1-3 3H8.9a2.7 2.7 0 0 1-.3-5.4 4.4 4.4 0 0 1 4.2-3.2 4.1 4.1 0 0 1 4 3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+                  </svg>
+                </span>
+              </button>
+            </div>
+          </section>
+
+          <section class="remote-qr-card" aria-label="Remote control barcode">
+            <div class="remote-qr-label">Scan For Remote</div>
+            <img
+              class="remote-qr-image"
+              src="/api/remote-qr"
+              alt="QR code for the remote control at http://192.168.1.7:3001"
+              width="132"
+              height="132"
+            />
+            <a class="remote-qr-link" href="http://192.168.1.7:3001" target="_blank" rel="noreferrer">
+              http://192.168.1.7:3001
+            </a>
+          </section>
+
+          <div class="dial-cluster dial-cluster-bottom">
+            <div class="dial-stack">
+              <button class="dial dial-action fullscreen-dial" id="fullscreenButton" type="button" aria-label="Enter fullscreen" title="Enter fullscreen">
+                <span class="dial-icon" aria-hidden="true">&#9974;</span>
+              </button>
+              <div class="dial-label">Fullscreen</div>
+            </div>
+            <div class="dial-stack">
+              <div
+                class="dial dial-volume dial-volume-large"
+                id="volumeDial"
+                role="slider"
+                tabindex="0"
+                aria-label="Volume"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                aria-valuenow="70"
+              ></div>
+              <div class="dial-label">Volume</div>
+            </div>
+            <div class="dial-stack mute-dial-stack">
+              <button class="dial dial-action mute-dial" id="muteButton" type="button" aria-label="Mute audio" title="Mute audio">
+                <span class="mute-dial-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="M4 14h3.4l4.2 3.8V6.2L7.4 10H4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>
+                    <path d="M15.2 9.2l4.6 5.6M19.8 9.2l-4.6 5.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+                  </svg>
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <div class="status" id="statusText">Select a channel</div>
+        </aside>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
