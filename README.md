@@ -72,19 +72,19 @@ Features:
 
 Key files:
 
-- [server.js](/home/user/tv/server.js): server, API routes, state sync, alerts/news/weather aggregation
-- [Dockerfile](/home/user/tv/Dockerfile): production container image for the app server
-- [docker-compose.yml](/home/user/tv/docker-compose.yml): local/prod container orchestration
-- [.dockerignore](/home/user/tv/.dockerignore): excludes local-only and bulky files from image builds
-- [public/index.html](/home/user/tv/public/index.html): TV screen markup
-- [public/app.js](/home/user/tv/public/app.js): TV screen logic
-- [public/styles.css](/home/user/tv/public/styles.css): TV screen styling
-- [public-remote/index.html](/home/user/tv/public-remote/index.html): remote UI markup
-- [public-remote/remote.js](/home/user/tv/public-remote/remote.js): remote logic
-- [public-remote/remote.css](/home/user/tv/public-remote/remote.css): remote styling
-- [.env.example](/home/user/tv/.env.example): example configuration
-- [systemd/tv-app.service.example](/home/user/tv/systemd/tv-app.service.example): example service file
-- [scripts/restart-kiosk-browser.sh](/home/user/tv/scripts/restart-kiosk-browser.sh): kiosk Chromium relaunch script
+- [server.js](/home/user/pi-tv-docker/server.js): server, API routes, state sync, alerts/news/weather aggregation
+- [Dockerfile](/home/user/pi-tv-docker/Dockerfile): production container image for the app server
+- [docker-compose.yml](/home/user/pi-tv-docker/docker-compose.yml): local/prod container orchestration
+- [.dockerignore](/home/user/pi-tv-docker/.dockerignore): excludes local-only and bulky files from image builds
+- [public/index.html](/home/user/pi-tv-docker/public/index.html): TV screen markup
+- [public/app.js](/home/user/pi-tv-docker/public/app.js): TV screen logic
+- [public/styles.css](/home/user/pi-tv-docker/public/styles.css): TV screen styling
+- [public-remote/index.html](/home/user/pi-tv-docker/public-remote/index.html): remote UI markup
+- [public-remote/remote.js](/home/user/pi-tv-docker/public-remote/remote.js): remote logic
+- [public-remote/remote.css](/home/user/pi-tv-docker/public-remote/remote.css): remote styling
+- [.env.example](/home/user/pi-tv-docker/.env.example): example configuration
+- [systemd/pi-tv-kiosk.service.example](/home/user/pi-tv-docker/systemd/pi-tv-kiosk.service.example): browser-only kiosk service for boot
+- [scripts/restart-kiosk-browser.sh](/home/user/pi-tv-docker/scripts/restart-kiosk-browser.sh): kiosk Chromium relaunch script
 
 ## Requirements
 
@@ -411,25 +411,29 @@ Main useful endpoints:
 
 This project includes:
 
-- [systemd/tv-app.service.example](/home/user/tv/systemd/tv-app.service.example)
-- [scripts/restart-kiosk-browser.sh](/home/user/tv/scripts/restart-kiosk-browser.sh)
+- [systemd/pi-tv-kiosk.service.example](/home/user/pi-tv-docker/systemd/pi-tv-kiosk.service.example)
+- [scripts/restart-kiosk-browser.sh](/home/user/pi-tv-docker/scripts/restart-kiosk-browser.sh)
 
 Typical setup:
 
 ```bash
-sudo install -m 0644 /home/user/tv/systemd/tv-app.service.example /etc/systemd/system/tv-app.service
-sudo chmod +x /home/user/tv/scripts/restart-kiosk-browser.sh
+cd /home/user/pi-tv-docker
+sudo chmod +x /home/user/pi-tv-docker/scripts/restart-kiosk-browser.sh
+sudo install -m 0644 /home/user/pi-tv-docker/systemd/pi-tv-kiosk.service.example /etc/systemd/system/pi-tv-kiosk.service
 sudo systemctl daemon-reload
-sudo systemctl enable tv-app.service
-sudo systemctl restart tv-app.service
+sudo systemctl enable pi-tv-kiosk.service
+sudo systemctl restart pi-tv-kiosk.service
 ```
 
 Useful commands:
 
 ```bash
-sudo systemctl restart tv-app.service
-sudo systemctl status tv-app.service --no-pager -n 20
-sudo journalctl -u tv-app.service -n 100 --no-pager
+sudo docker compose up -d --build
+sudo docker compose ps
+sudo docker compose logs --tail=100
+sudo systemctl restart pi-tv-kiosk.service
+sudo systemctl status pi-tv-kiosk.service --no-pager -n 20
+sudo journalctl -u pi-tv-kiosk.service -n 100 --no-pager
 ```
 
 The kiosk launcher:
@@ -458,13 +462,13 @@ If desktop audio apps work but Chromium does not, prefer running the service ins
 ## Recommended Workflow
 
 1. Configure your stream URLs in `.env`
-2. Set `REMOTE_CONTROL_URL` to the actual remote address
+2. Leave `REMOTE_CONTROL_URL` empty unless you want to force a custom remote address
 3. Confirm TV UI works at port `3000`
 4. Confirm remote UI works at port `3001`
 5. Tune `DEFAULT_VOLUME` and HLS settings
-6. Enable kiosk mode with systemd once the browser flow is stable
+6. Keep Docker for the app and the kiosk service only for Chromium auto-launch
 
 ## Notes
 
-- This project is not currently a git repository in `/home/user/tv`, so pushing to GitHub will require initializing git or moving into the real repo root first.
+- The remote QR/link now auto-uses the active TV host IP and avoids localhost/loopback fallbacks.
 - Use only streams and feeds you are legally allowed to access and display.
