@@ -46,6 +46,8 @@ const alertsNewsMeta = document.getElementById('alertsNewsMeta');
 const alertsNewsList = document.getElementById('alertsNewsList');
 const player = document.getElementById('player');
 const volumeDial = document.getElementById('volumeDial');
+const remoteQrImage = document.getElementById('remoteQrImage');
+const remoteQrLink = document.getElementById('remoteQrLink');
 
 let hls = null;
 let channelsById = new Map();
@@ -245,6 +247,24 @@ function volumeToAngle(volume) {
 
 function angleToVolume(angle) {
   return (angle - DIAL_MIN_ANGLE) / (DIAL_MAX_ANGLE - DIAL_MIN_ANGLE);
+}
+
+function updateRemoteLink(remoteUrl) {
+  if (typeof remoteUrl !== 'string' || !remoteUrl.trim()) {
+    return;
+  }
+
+  const resolvedUrl = remoteUrl.trim();
+
+  if (remoteQrImage) {
+    remoteQrImage.alt = `QR code for the remote control at ${resolvedUrl}`;
+    remoteQrImage.src = `/api/remote-qr?t=${Date.now()}`;
+  }
+
+  if (remoteQrLink) {
+    remoteQrLink.href = resolvedUrl;
+    remoteQrLink.textContent = resolvedUrl;
+  }
 }
 
 function renderEmergencyContacts() {
@@ -2310,6 +2330,10 @@ async function init() {
 
       if (typeof config.clientDiagnosticsEnabled === 'boolean') {
         clientDiagnosticsEnabled = config.clientDiagnosticsEnabled;
+      }
+
+      if (typeof config.remoteControlUrl === 'string') {
+        updateRemoteLink(config.remoteControlUrl);
       }
 
       if (config.hlsConfig && typeof config.hlsConfig === 'object') {

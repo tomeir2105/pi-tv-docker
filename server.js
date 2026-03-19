@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const { spawn } = require('child_process');
 const QRCode = require('qrcode');
 const WebSocket = require('ws');
@@ -11,7 +12,7 @@ const remoteApp = express();
 
 const tvPort = Number(process.env.PORT || 3000);
 const remotePort = Number(process.env.REMOTE_PORT || 3001);
-const remoteControlUrl = process.env.REMOTE_CONTROL_URL || 'http://192.168.1.7:3001';
+const remoteControlUrl = String(process.env.REMOTE_CONTROL_URL || '').trim();
 const kioskRestartScriptPath = path.join(__dirname, 'scripts', 'restart-kiosk-browser.sh');
 const logsDirPath = path.join(__dirname, 'logs');
 const customBeepSoundPath = path.join(__dirname, 'public', 'beep.mp3');
@@ -95,6 +96,84 @@ function parseEnvUrlList(name) {
     .split(',')
     .map((value) => value.trim())
     .filter(Boolean);
+}
+
+function getRequestProtocol(req) {
+  const forwardedProto = String(req.headers['x-forwarded-proto'] || '')
+    .split(',')
+    .map((value) => value.trim())
+    .find(Boolean);
+
+  return forwardedProto || req.protocol || 'http';
+}
+
+function getRequestHostname(req) {
+  const forwardedHost = String(req.headers['x-forwarded-host'] || '')
+    .split(',')
+    .map((value) => value.trim())
+    .find(Boolean);
+  const hostHeader = forwardedHost || String(req.headers.host || '').trim();
+
+  if (!hostHeader) {
+    return 'localhost';
+  }
+
+  try {
+    return new URL(`http://${hostHeader}`).hostname || 'localhost';
+  } catch (_error) {
+    return hostHeader.replace(/:\d+$/, '') || 'localhost';
+  }
+}
+
+function isLoopbackHostname(hostname) {
+  const normalizedHostname = String(hostname || '').trim().toLowerCase();
+  return (
+    !normalizedHostname ||
+    normalizedHostname === 'localhost' ||
+    normalizedHostname === '127.0.0.1' ||
+    normalizedHostname === '::1' ||
+    normalizedHostname === '[::1]'
+  );
+}
+
+function getPreferredLanIp() {
+  const networkInterfaces = os.networkInterfaces();
+  const candidateAddresses = [];
+
+  for (const interfaceEntries of Object.values(networkInterfaces)) {
+    for (const entry of interfaceEntries || []) {
+      if (!entry || entry.internal || entry.family !== 'IPv4') {
+        continue;
+      }
+
+      const address = String(entry.address || '').trim();
+      if (!address) {
+        continue;
+      }
+
+      candidateAddresses.push(address);
+    }
+  }
+
+  const preferredAddress =
+    candidateAddresses.find((address) => address.startsWith('192.168.')) ||
+    candidateAddresses.find((address) => address.startsWith('10.')) ||
+    candidateAddresses.find((address) => /^172\.(1[6-9]|2\d|3[0-1])\./.test(address)) ||
+    candidateAddresses.find((address) => !address.startsWith('172.17.') && !address.startsWith('172.18.')) ||
+    candidateAddresses[0];
+
+  return preferredAddress || null;
+}
+
+function getRemoteControlUrl(req) {
+  if (remoteControlUrl) {
+    return remoteControlUrl;
+  }
+
+  const requestHostname = getRequestHostname(req);
+  const hostname = isLoopbackHostname(requestHostname) ? (getPreferredLanIp() || requestHostname) : requestHostname;
+
+  return `${getRequestProtocol(req)}://${hostname}:${remotePort}`;
 }
 
 const defaultWeatherCitiesConfig = {
@@ -1226,7 +1305,7 @@ function registerApiRoutes(app, appName) {
     res.json(controlState);
   });
 
-  app.get('/api/runtime-config', (_req, res) => {
+  app.get('/api/runtime-config', (req, res) => {
     res.json({
       alertsRefreshMs,
       hlsConfig: {
@@ -1247,15 +1326,15 @@ function registerApiRoutes(app, appName) {
       newsItemsPerSource,
       newsMaxAgeMinutes,
       maxStoredMessages,
-      remoteControlUrl,
+      remoteControlUrl: getRemoteControlUrl(req),
       emergencyContacts,
       clientDiagnosticsEnabled: enableClientDiagnostics
     });
   });
 
-  app.get('/api/remote-qr', async (_req, res) => {
+  app.get('/api/remote-qr', async (req, res) => {
     try {
-      const svg = await QRCode.toString(remoteControlUrl, {
+      const svg = await QRCode.toString(getRemoteControlUrl(req), {
         type: 'svg',
         margin: 1,
         width: 160,

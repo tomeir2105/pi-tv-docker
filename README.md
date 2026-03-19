@@ -221,7 +221,7 @@ Sensitive local-only values can stay in `.env` and be omitted from `.env.example
 NODE_ENV=development
 PORT=3000
 REMOTE_PORT=3001
-REMOTE_CONTROL_URL=http://192.168.1.7:3001
+REMOTE_CONTROL_URL=
 
 CHANNEL11_URL=https://your-stream-11.m3u8
 CHANNEL11_FALLBACK_URLS=
@@ -233,6 +233,8 @@ DEFAULT_CHANNEL_ID=13
 
 DEFAULT_VOLUME=70
 ```
+
+Leave `REMOTE_CONTROL_URL` empty to auto-build the remote link from the current TV host IP. Set it only if you want to force a custom remote address.
 
 ### Local-only emergency contacts
 

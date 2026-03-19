@@ -1,13 +1,12 @@
 [Unit]
-Description=TV Node App
-After=network-online.target
-Wants=network-online.target
+Description=PI TV Kiosk Browser
+After=network-online.target docker.service graphical.target
+Wants=network-online.target docker.service
 
 [Service]
 Type=simple
 User=user
-WorkingDirectory=/home/user/tv
-Environment=NODE_ENV=production
+WorkingDirectory=/home/user/pi-tv-docker
 Environment=DISPLAY=:0
 Environment=XAUTHORITY=/home/user/.Xauthority
 Environment=XDG_RUNTIME_DIR=/run/user/1000
@@ -16,10 +15,10 @@ Environment=PULSE_SERVER=unix:/run/user/1000/pulse/native
 Environment=KIOSK_URL=http://localhost:3000
 Environment=AUDIO_STACK=pipewire
 Environment=KIOSK_PROFILE_DIR=/tmp/kiosk-chromium-profile
-ExecStart=/usr/bin/node /home/user/tv/server.js
-ExecStartPost=/home/user/tv/scripts/restart-kiosk-browser.sh
+Environment=KIOSK_FOREGROUND=1
+ExecStart=/home/user/pi-tv-docker/scripts/restart-kiosk-browser.sh
 Restart=always
-RestartSec=3
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target

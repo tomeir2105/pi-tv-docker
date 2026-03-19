@@ -2,6 +2,9 @@
 
 set -eu
 
+SCRIPT_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
+PROJECT_ROOT="$(CDPATH='' cd -- "$SCRIPT_DIR/.." && pwd)"
+
 DISPLAY_VALUE="${DISPLAY:-:0}"
 XAUTHORITY_VALUE="${XAUTHORITY:-/home/user/.Xauthority}"
 URL="${KIOSK_URL:-http://localhost:3000}"
@@ -9,8 +12,10 @@ AUDIO_STACK="${AUDIO_STACK:-alsa}"
 AUDIO_OUTPUT_PREFERENCE="${AUDIO_OUTPUT_PREFERENCE:-hdmi}"
 AUDIO_VOLUME="${AUDIO_VOLUME:-1.0}"
 KIOSK_LOG_PATH="${KIOSK_LOG_PATH:-/tmp/kiosk-browser.log}"
+KIOSK_URL_WAIT_SECONDS="${KIOSK_URL_WAIT_SECONDS:-30}"
+KIOSK_FOREGROUND="${KIOSK_FOREGROUND:-0}"
 CHROMIUM_EXTRA_FLAGS="${CHROMIUM_EXTRA_FLAGS:---disable-gpu --disable-gpu-rasterization --disable-accelerated-video-decode --disable-accelerated-2d-canvas --disable-features=UseSkiaRenderer,Vulkan}"
-ALSA_CONFIG_PATH_VALUE="${ALSA_CONFIG_PATH:-/home/user/tv/config/asoundrc}"
+ALSA_CONFIG_PATH_VALUE="${ALSA_CONFIG_PATH:-$PROJECT_ROOT/config/asoundrc}"
 KIOSK_PROFILE_DIR="${KIOSK_PROFILE_DIR:-/tmp/kiosk-chromium-profile}"
 
 if [ -n "${CHROMIUM_BIN:-}" ]; then
@@ -64,11 +69,13 @@ select_audio_sink() {
 wait_for_kiosk_url() {
   command -v curl >/dev/null 2>&1 || return 0
 
-  for _attempt in 1 2 3 4 5 6 7 8 9 10; do
+  attempt=0
+  while [ "$attempt" -lt "$KIOSK_URL_WAIT_SECONDS" ]; do
     if curl -fsS --max-time 2 "$URL" >/dev/null 2>&1; then
       return 0
     fi
 
+    attempt=$((attempt + 1))
     sleep 1
   done
 
@@ -83,11 +90,14 @@ log "Chromium extra flags: $CHROMIUM_EXTRA_FLAGS"
 # Chromium itself is using ALSA underneath.
 select_audio_sink
 
-pkill -f 'chromium.*--kiosk' || true
-pkill -f '(^|/)chromium-browser( |$)' || true
-pkill -f '(^|/)chromium( |$)' || true
+if [ "$KIOSK_FOREGROUND" != "1" ]; then
+  pkill -f 'chromium.*--kiosk' || true
+  pkill -f '(^|/)chromium-browser( |$)' || true
+  pkill -f '(^|/)chromium( |$)' || true
 
-sleep 2
+  sleep 2
+fi
+
 wait_for_kiosk_url
 
 set -- "$CHROMIUM_BIN" \
@@ -104,6 +114,11 @@ set -- "$CHROMIUM_BIN" \
 
 # shellcheck disable=SC2086
 set -- "$@" $CHROMIUM_EXTRA_FLAGS
+
+if [ "$KIOSK_FOREGROUND" = "1" ]; then
+  log "Launching Chromium in foreground with $CHROMIUM_BIN"
+  exec "$@" >>"$KIOSK_LOG_PATH" 2>&1
+fi
 
 nohup "$@" >>"$KIOSK_LOG_PATH" 2>&1 &
 
