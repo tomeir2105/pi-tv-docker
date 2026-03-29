@@ -1511,23 +1511,23 @@ body.fullscreen-mode .sleep-screen {
   }
 
   .channel-number {
-    font-size: 0.96rem;
+    font-size: 1.08rem;
     line-height: 1;
   }
 
   .news-icon,
   .weather-nav-icon,
   .camera-channel-icon {
-    width: 1.32rem;
-    height: 1.32rem;
+    width: 1.48rem;
+    height: 1.48rem;
   }
 
   .setup-icon {
-    font-size: 1.28rem;
+    font-size: 1.42rem;
   }
 
   .emergency-nav-btn .channel-number {
-    font-size: 1.45rem;
+    font-size: 1.62rem;
   }
 
   .dial-cluster {

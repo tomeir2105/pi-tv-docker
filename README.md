@@ -54,6 +54,7 @@ TV features:
 - HLS playback and RTSP-to-HLS relay support
 - fallback URLs per channel
 - weather city picker on both the weather screen and control panel
+- mobile-friendly control panel sizing for small screens
 - active alerts plus alert history
 - combined headlines from multiple sources
 - emergency contacts display
@@ -162,6 +163,16 @@ Rebuild after changes:
 
 ```bash
 docker compose up -d --build pi-tv
+```
+
+### Publish to Docker Hub
+
+If you want to publish the current build to Docker Hub:
+
+```bash
+docker compose build pi-tv
+docker tag pi-tv-docker-pi-tv:latest meir25/pi-tv-docker:latest
+docker push meir25/pi-tv-docker:latest
 ```
 
 ### Run without Compose
