@@ -1489,67 +1489,100 @@ body.fullscreen-mode .sleep-screen {
 
   .control-panel {
     min-height: 250px;
-    padding: 5px 7px 7px;
-    gap: 3px;
+    padding: 4px 6px 6px;
+    gap: 2px;
   }
 
   .btn-group {
-    grid-template-columns: repeat(3, minmax(52px, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
   }
 
   .nav-btn {
-    min-height: 56px;
-    padding: 3px 2px 5px;
-    font-size: 0.64rem;
+    min-height: 44px;
+    padding: 2px 1px 4px;
+    font-size: 0.56rem;
   }
 
   .channel-number {
-    font-size: 0.8rem;
+    font-size: 0.72rem;
+    line-height: 1;
   }
 
   .news-icon,
   .weather-nav-icon,
   .camera-channel-icon {
-    width: 1.35rem;
-    height: 1.35rem;
+    width: 1.05rem;
+    height: 1.05rem;
   }
 
   .setup-icon {
-    font-size: 1.3rem;
+    font-size: 1rem;
   }
 
   .dial-cluster {
-    gap: 6px;
+    gap: 4px;
   }
 
   .dial {
-    max-width: 92px;
+    max-width: 82px;
   }
 
   .dial::before {
-    height: 11px;
+    height: 9px;
   }
 
   .dial-volume-large {
-    width: 56px;
+    width: 48px;
   }
 
   .dial-volume-large::before {
-    height: 13px;
+    height: 11px;
   }
 
   .fullscreen-dial,
   .mute-dial {
-    width: 38px;
+    width: 32px;
   }
 
   .dial-icon {
-    font-size: 1.45rem;
+    font-size: 1.2rem;
   }
 
   .mute-dial-icon {
-    width: 0.9rem;
-    height: 0.9rem;
+    width: 0.75rem;
+    height: 0.75rem;
+  }
+
+  .channel-panel,
+  .weather-panel {
+    gap: 3px;
+    margin-bottom: 4px;
+  }
+
+  .channel-panel-label,
+  .remote-qr-label {
+    font-size: 0.62rem;
+  }
+
+  .weather-city-picker select {
+    min-height: 32px;
+    padding: 5px 8px;
+    font-size: 0.78rem;
+  }
+
+  .remote-qr-card {
+    padding: 4px;
+    gap: 3px;
+  }
+
+  .remote-qr-image {
+    width: min(100%, 76px);
+  }
+
+  .remote-qr-link,
+  .status {
+    font-size: 0.52rem;
   }
 
   .weather-header,

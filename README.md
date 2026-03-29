@@ -1,22 +1,26 @@
 # PI TV
 
-A TV-style web app for Raspberry Pi that turns a browser into a living-room dashboard:
+A Raspberry Pi-friendly TV dashboard that turns a browser into a living-room control surface.
+
+It includes:
 
 - live channel playback with fallback stream URLs
-- a dedicated weather screen with selectable cities
-- alerts + breaking news mode
-- emergency contacts screen
-- a separate remote-control web app
-- fullscreen, volume, mute, refresh, and browser control
-- kiosk-friendly deployment for Raspberry Pi / Chromium
+- a weather screen with selectable cities and favorite support
+- alerts plus combined news headlines
+- an emergency contacts screen
+- a built-in setup screen for channels, weather cities, emergency contacts, and news feeds
+- a separate remote-control web app with live TV state sync
+- Docker-friendly deployment for the app layer
+- kiosk-friendly deployment for Chromium on the Pi host
 
 Built with:
 
 - `Node.js`
 - `Express`
-- `HLS.js`
 - `WebSocket`
+- `QRCode`
 - `dotenv`
+- `ffmpeg` for RTSP relay
 
 ## Screenshots
 
@@ -34,77 +38,78 @@ Built with:
 
 ## What It Includes
 
-### TV screen app
+### TV app
 
-The TV UI runs on the main port and is designed for kiosk / fullscreen playback.
+The TV UI runs on the main port and is designed for fullscreen or kiosk playback.
 
-Features:
+Main screens:
 
-- Channel `11`, `12`, `13` live playback
-- fallback stream URLs per live channel
-- weather screen with auto-scroll and city selection
-- alerts screen with Pikud HaOref data
-- combined news headlines from multiple sources
-- emergency contacts screen
-- persistent volume and mute state in the browser
-- fullscreen mode
-- on-screen control buttons for news, weather, mute, and channels
+- live channels: `11`, `12`, `13`, `16`
+- alerts/news: `14`
+- emergency contacts: `15`
+- setup: settings editor inside the TV UI
+
+TV features:
+
+- HLS playback and RTSP-to-HLS relay support
+- fallback URLs per channel
+- weather city picker on both the weather screen and control panel
+- active alerts plus alert history
+- combined headlines from multiple sources
+- emergency contacts display
+- persistent volume and mute state
+- fullscreen, mute, and channel controls on the right-side panel
+- QR code and direct link for the remote app
 
 ### Remote control app
 
 The remote UI runs on a second port and syncs against the TV state in real time.
 
-Features:
+Remote features:
 
 - channel switching
-- news / weather / emergency shortcuts
-- play / pause
+- weather, alerts, emergency, and setup shortcuts
+- play and pause
 - volume slider
 - mute toggle
 - fullscreen toggle
 - browser refresh
 - browser back
-- browser close / minimize
+- browser close and minimize
 - Pi beep test
-- optional audio redirect for live channels
+- optional remote-side audio redirect for live channels
 
 ## Project Structure
 
 Key files:
 
-- [server.js](/home/user/pi-tv-docker/server.js): server, API routes, state sync, alerts/news/weather aggregation
-- [Dockerfile](/home/user/pi-tv-docker/Dockerfile): production container image for the app server
-- [docker-compose.yml](/home/user/pi-tv-docker/docker-compose.yml): local/prod container orchestration
-- [.dockerignore](/home/user/pi-tv-docker/.dockerignore): excludes local-only and bulky files from image builds
-- [public/index.html](/home/user/pi-tv-docker/public/index.html): TV screen markup
-- [public/app.js](/home/user/pi-tv-docker/public/app.js): TV screen logic
-- [public/styles.css](/home/user/pi-tv-docker/public/styles.css): TV screen styling
-- [public-remote/index.html](/home/user/pi-tv-docker/public-remote/index.html): remote UI markup
-- [public-remote/remote.js](/home/user/pi-tv-docker/public-remote/remote.js): remote logic
-- [public-remote/remote.css](/home/user/pi-tv-docker/public-remote/remote.css): remote styling
+- [server.js](/home/user/pi-tv-docker/server.js): Express server, APIs, control-state sync, alerts/news/weather aggregation, RTSP relay
+- [Dockerfile](/home/user/pi-tv-docker/Dockerfile): production image
+- [docker-compose.yml](/home/user/pi-tv-docker/docker-compose.yml): local and Pi container orchestration
 - [.env.example](/home/user/pi-tv-docker/.env.example): example configuration
-- [systemd/pi-tv-kiosk.service.example](/home/user/pi-tv-docker/systemd/pi-tv-kiosk.service.example): browser-only kiosk service for boot
-- [scripts/restart-kiosk-browser.sh](/home/user/pi-tv-docker/scripts/restart-kiosk-browser.sh): kiosk Chromium relaunch script
+- [public/index.html](/home/user/pi-tv-docker/public/index.html): TV UI markup
+- [public/app.js](/home/user/pi-tv-docker/public/app.js): TV UI behavior and setup screen logic
+- [public/styles.css](/home/user/pi-tv-docker/public/styles.css): TV UI styling
+- [public-remote/index.html](/home/user/pi-tv-docker/public-remote/index.html): remote markup
+- [public-remote/remote.js](/home/user/pi-tv-docker/public-remote/remote.js): remote behavior
+- [public-remote/remote.css](/home/user/pi-tv-docker/public-remote/remote.css): remote styling
+- [systemd/pi-tv-kiosk.service.example](/home/user/pi-tv-docker/systemd/pi-tv-kiosk.service.example): example systemd service for Chromium kiosk mode
+- [scripts/restart-kiosk-browser.sh](/home/user/pi-tv-docker/scripts/restart-kiosk-browser.sh): Chromium relaunch helper
 
 ## Requirements
 
 - Node.js `18+`
 - npm
-- Chromium or Chromium Browser on the Pi
-- a desktop session if you want kiosk mode with visible browser output
+- Chromium or Chromium Browser on the Raspberry Pi if you want kiosk mode
+- `ffmpeg` on the host only if you are not using Docker
 
 ## Quick Start
 
-Install dependencies:
+Install and run locally:
 
 ```bash
 npm install
 cp .env.example .env
-```
-
-Start the app:
-
-```bash
 npm start
 ```
 
@@ -121,23 +126,21 @@ Open:
 
 ## Docker
 
-This project can run cleanly in Docker for the app layer:
+The containerized part of the project includes:
 
 - TV web app
 - remote web app
-- alerts / news / weather APIs
-- WebSocket state sync
+- alerts, news, and weather APIs
+- WebSocket control-state sync
+- RTSP relay through bundled `ffmpeg`
 
-The Raspberry Pi kiosk/browser layer is still best kept on the host:
+Recommended split on a Raspberry Pi:
 
-- Chromium kiosk launch
-- browser refresh / close scripts
-- ALSA / PipeWire host integration
-- desktop session startup
+- Docker container runs the Node app
+- host system runs Chromium kiosk pointed at `http://localhost:3000`
+- host system handles desktop session and audio integration
 
 ### Docker quick start
-
-Build and run with Compose:
 
 ```bash
 cp .env.example .env
@@ -155,30 +158,16 @@ Stop:
 docker compose down
 ```
 
-### Docker files
+Rebuild after changes:
 
-- `Dockerfile`: builds a production Node 20 image
-- `docker-compose.yml`: runs the app with restart policy, env file, and port mapping
-- `.dockerignore`: keeps `.env`, `node_modules`, logs, and generated files out of the image context
-
-### Docker notes
-
-- The container reads app settings from local `.env`
-- Logs are persisted to `./logs`
-- Ports are mapped from `PORT` and `REMOTE_PORT`
-- The image includes a healthcheck against `/api/channels`
+```bash
+docker compose up -d --build pi-tv
+```
 
 ### Run without Compose
 
-Build:
-
 ```bash
 docker build -t pi-tv .
-```
-
-Run:
-
-```bash
 docker run -d \
   --name pi-tv \
   --restart unless-stopped \
@@ -186,22 +175,15 @@ docker run -d \
   -p 3000:3000 \
   -p 3001:3001 \
   -v "$(pwd)/logs:/app/logs" \
+  -v "$(pwd)/data:/app/data" \
   pi-tv
 ```
 
-### Raspberry Pi deployment model
+## Configuration
 
-Recommended split on a Pi:
+The app reads its defaults from `.env`. Some settings can also be changed at runtime from the built-in setup screen.
 
-- Docker container runs the Node app
-- host system runs Chromium kiosk pointed at `http://localhost:3000`
-- host system keeps systemd / autostart / audio-device integration
-
-## Environment Configuration
-
-The app is configured entirely from `.env`.
-
-Sections currently used:
+Important sections in [.env.example](/home/user/pi-tv-docker/.env.example):
 
 - Server
 - System
@@ -212,8 +194,6 @@ Sections currently used:
 - News
 - Playback
 - TV News UI
-
-Sensitive local-only values can stay in `.env` and be omitted from `.env.example`.
 
 ### Core example
 
@@ -236,21 +216,27 @@ DEFAULT_CHANNEL_ID=13
 DEFAULT_VOLUME=70
 ```
 
-Leave `REMOTE_CONTROL_URL` empty to auto-build the remote link from the current TV host IP. Set it only if you want to force a custom remote address.
+Leave `REMOTE_CONTROL_URL` empty to auto-build the remote link from the current TV host. Set it only if you want to force a custom address.
 
-### Local-only emergency contacts
+### Built-in setup screen
 
-The emergency screen can be populated from `EMERGENCY_CONTACTS`.
+The setup screen is available from the TV control panel and stores runtime settings through the app API.
 
-Example format:
+Current setup fields:
 
-```env
-EMERGENCY_CONTACTS=[{"name":"משטרה","number":"100","primary":true},{"name":"אמבולנס","number":"101","primary":true},{"name":"מכבי אש","number":"102","primary":true}]
-```
+- channel URLs for `11`, `12`, `13`, and `16`
+- emergency contacts JSON
+- weather cities JSON
+- news source URLs
 
-`.env.example` keeps the common public emergency numbers. Any local/private contacts should stay only in `.env`.
+Setup API endpoints:
 
-## Channels
+- `GET /api/setup/config`
+- `POST /api/setup/config`
+
+Use the setup screen for day-to-day updates. Keep sensitive or deployment-specific defaults in `.env`.
+
+### Channels
 
 Live channels:
 
@@ -261,17 +247,15 @@ Live channels:
 
 Built-in screens:
 
-- `14`: alerts / news
-- `15`: emergency
+- `14`: alerts and news
+- `15`: emergency contacts
 
 Each live channel supports:
 
 - `CHANNEL##_URL`
 - `CHANNEL##_FALLBACK_URLS`
 
-`CHANNEL##_URL` can be either an HLS URL or an `rtsp://` URL.
-
-When a channel is configured with RTSP, the server relays it to local HLS with `ffmpeg` so the TV browser can play it.
+`CHANNEL##_URL` can be either an HLS URL or an `rtsp://` URL. When a channel uses RTSP, the server relays it to browser-friendly HLS with `ffmpeg`.
 
 Fallback URLs are comma-separated:
 
@@ -279,9 +263,7 @@ Fallback URLs are comma-separated:
 CHANNEL11_FALLBACK_URLS=https://backup-a.example/11.m3u8,https://backup-b.example/11.m3u8
 ```
 
-The player tries the primary URL first, then fallback URLs in order.
-
-## Weather
+### Weather
 
 Weather city options come from `WEATHER_CITIES`.
 
@@ -301,37 +283,26 @@ Each entry may include:
 
 Notes:
 
-- if `lat` / `lon` are missing, the server geocodes the city automatically
-- `DEFAULT_WEATHER_CITY` chooses the default
-- `WEATHER_CITIES_PRIORITY` can pin cities higher in alerts/weather sorting
+- if `lat` and `lon` are missing, the server geocodes the city automatically
+- `DEFAULT_WEATHER_CITY` chooses the initial city
+- `WEATHER_CITIES_PRIORITY` can pin cities higher in alert ordering
 - `TIMEZONE` is passed to the weather and air-quality APIs
 
-Priority example:
+### Emergency contacts
+
+The emergency screen is populated from `EMERGENCY_CONTACTS` or the setup screen.
+
+Example:
 
 ```env
-WEATHER_CITIES_PRIORITY=בת חפר,תל אביב,מודיעין,ראשון לציון
+EMERGENCY_CONTACTS=[{"name":"משטרה","number":"100","primary":true},{"name":"אמבולנס","number":"101","primary":true},{"name":"מכבי אש","number":"102","primary":true}]
 ```
 
-If an alert location list contains those cities, they will be moved to the front in the same order they appear in `WEATHER_CITIES_PRIORITY`.
-
-Example with city-only config:
-
-```env
-WEATHER_CITIES={"tel-aviv":{"name":"Tel Aviv","aliases":["Tel Aviv","תל אביב","תל-אביב"]},"haifa":{"name":"Haifa","aliases":["Haifa","חיפה"]}}
-DEFAULT_WEATHER_CITY=tel-aviv
-```
-
-Example with explicit geocoding query:
-
-```env
-WEATHER_CITIES={"nyc":{"name":"New York","query":"New York City","aliases":["NYC","New York"]}}
-```
-
-## Alerts And News
+### Alerts and news
 
 Alerts are fetched from Pikud HaOref.
 
-Config:
+Main alert config:
 
 - `PIKUD_HAOREF_CURRENT_URL`
 - `PIKUD_HAOREF_HISTORY_URL`
@@ -340,7 +311,7 @@ Config:
 - `PIKUD_HAOREF_HISTORY_LIMIT`
 - `ALERTS_REFRESH_MS`
 
-Combined news currently uses:
+Combined news sources:
 
 - `YNET_BREAKING_NEWS_URL`
 - `MAKO_NEWS_RSS_URL`
@@ -348,7 +319,7 @@ Combined news currently uses:
 - `KAN_BREAKING_NEWS_URL`
 - `KAN_HEADLINES_URL`
 
-Tuning:
+Useful news tuning:
 
 - `NEWS_CACHE_MS`
 - `NEWS_ITEMS_PER_SOURCE`
@@ -359,11 +330,7 @@ Tuning:
 - `ALERTS_NEWS_SCROLL_PAUSE_MS`
 - `MAX_STORED_MESSAGES`
 
-The app now filters generic CTA-style titles like `לצפייה בכתבה` and prefers better headline candidates when available.
-
-## Playback, Volume, And Mute
-
-Playback defaults are controlled from env and browser state.
+## Playback, volume, and mute
 
 Relevant config:
 
@@ -376,16 +343,18 @@ Relevant config:
 - `HLS_MAX_MAX_BUFFER_LENGTH`
 - `HLS_MAX_BUFFER_HOLE`
 - `HLS_HIGH_BUFFER_WATCHDOG_PERIOD`
+- `RTSP_RELAY_SEGMENT_DURATION`
+- `RTSP_RELAY_SEGMENT_COUNT`
+- `RTSP_RELAY_STARTUP_TIMEOUT_MS`
+- `RTSP_RELAY_IDLE_TIMEOUT_MS`
 
 Behavior:
 
-- chosen volume is preserved across channel changes
-- volume is restored when returning to the page
-- mute is synced between TV UI and remote
-- mute toggling drops visible volume to `0%`
+- selected volume is preserved across channel changes
+- mute state syncs between TV UI and remote UI
 - unmute restores the last audible volume
 
-## Logging And Diagnostics
+## Logging and diagnostics
 
 Optional diagnostics:
 
@@ -399,14 +368,15 @@ Log files:
 - `logs/server-YYYY-MM-DD.log`
 - `logs/client-YYYY-MM-DD.log`
 
-## Runtime Endpoints
+## Runtime endpoints
 
-Main useful endpoints:
+Useful endpoints:
 
 - `/api/channels`
-- `/api/runtime-config`
+- `/api/setup/config`
 - `/api/control/state`
 - `/api/control/events`
+- `/api/control/ping`
 - `/api/weather/cities`
 - `/api/weather/current`
 - `/api/alerts/current`
@@ -414,7 +384,7 @@ Main useful endpoints:
 - `/api/news/combined`
 - `/api/remote-qr`
 
-## Kiosk Mode On Raspberry Pi
+## Kiosk mode on Raspberry Pi
 
 This project includes:
 
@@ -443,39 +413,8 @@ sudo systemctl status pi-tv-kiosk.service --no-pager -n 20
 sudo journalctl -u pi-tv-kiosk.service -n 100 --no-pager
 ```
 
-The kiosk launcher:
-
-- kills the existing Chromium kiosk process
-- waits briefly
-- relaunches Chromium against the TV UI
-- uses a dedicated profile in `/tmp/kiosk-chromium-profile`
-
-## Audio Notes
-
-This setup has support for:
-
-- Pi-local beep output
-- optional remote-side audio redirect
-- Chromium audio launched from the logged-in user session
-
-Useful env values:
-
-- `ALSA_BEEP_DEVICE`
-- `CHROMIUM_BIN`
-- `CHROMIUM_DEBUG_ORIGIN`
-
-If desktop audio apps work but Chromium does not, prefer running the service inside the logged-in user's audio session rather than forcing a custom ALSA route.
-
-## Recommended Workflow
-
-1. Configure your stream URLs in `.env`
-2. Leave `REMOTE_CONTROL_URL` empty unless you want to force a custom remote address
-3. Confirm TV UI works at port `3000`
-4. Confirm remote UI works at port `3001`
-5. Tune `DEFAULT_VOLUME` and HLS settings
-6. Keep Docker for the app and the kiosk service only for Chromium auto-launch
-
 ## Notes
 
-- The remote QR/link now auto-uses the active TV host IP and avoids localhost/loopback fallbacks.
+- The remote QR and remote link auto-use the active TV host when possible.
+- The setup screen is best for operational tweaks, while `.env` remains the source of deployment defaults.
 - Use only streams and feeds you are legally allowed to access and display.

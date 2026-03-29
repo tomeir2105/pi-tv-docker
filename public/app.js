@@ -10,6 +10,18 @@ const weatherView = document.getElementById('weatherView');
 const alertsView = document.getElementById('alertsView');
 const emergencyView = document.getElementById('emergencyView');
 const setupView = document.getElementById('setupView');
+const setupForm = document.getElementById('setupForm');
+const setupChannel11 = document.getElementById('setupChannel11');
+const setupChannel12 = document.getElementById('setupChannel12');
+const setupChannel13 = document.getElementById('setupChannel13');
+const setupChannel16 = document.getElementById('setupChannel16');
+const setupEmergencyContacts = document.getElementById('setupEmergencyContacts');
+const setupWeatherCities = document.getElementById('setupWeatherCities');
+const setupYnetUrl = document.getElementById('setupYnetUrl');
+const setupMakoUrl = document.getElementById('setupMakoUrl');
+const setupIsraelHayomUrl = document.getElementById('setupIsraelHayomUrl');
+const setupKanBreakingUrl = document.getElementById('setupKanBreakingUrl');
+const setupKanHeadlinesUrl = document.getElementById('setupKanHeadlinesUrl');
 const emergencyGrid = document.getElementById('emergencyGrid');
 const emergencyEmpty = document.getElementById('emergencyEmpty');
 const standbyScreen = document.getElementById('standbyScreen');
@@ -110,6 +122,7 @@ let hlsRuntimeConfig = {
 let isAlertsNewsHovered = false;
 let alertsNewsScrollDirection = 'down';
 let clientDiagnosticsEnabled = false;
+let setupConfigLoaded = false;
 const WEATHER_AUTOSCROLL_PX_PER_SECOND = 26;
 const CLIENT_SESSION_ID = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 const diagnosticsRateLimit = new Map();
@@ -292,6 +305,46 @@ function renderEmergencyContacts() {
     `;
     emergencyGrid.appendChild(article);
   });
+}
+
+function populateSetupForm(config = {}) {
+  if (!setupForm) {
+    return;
+  }
+
+  const channelUrls = config.channelUrls && typeof config.channelUrls === 'object' ? config.channelUrls : {};
+  const newsUrls = config.newsUrls && typeof config.newsUrls === 'object' ? config.newsUrls : {};
+
+  if (setupChannel11) setupChannel11.value = String(channelUrls['11'] || '');
+  if (setupChannel12) setupChannel12.value = String(channelUrls['12'] || '');
+  if (setupChannel13) setupChannel13.value = String(channelUrls['13'] || '');
+  if (setupChannel16) setupChannel16.value = String(channelUrls['16'] || '');
+  if (setupEmergencyContacts) setupEmergencyContacts.value = String(config.emergencyContactsRaw || '');
+  if (setupWeatherCities) setupWeatherCities.value = String(config.weatherCitiesRaw || '');
+  if (setupYnetUrl) setupYnetUrl.value = String(newsUrls.ynetBreakingNewsUrl || '');
+  if (setupMakoUrl) setupMakoUrl.value = String(newsUrls.makoNewsRssUrl || '');
+  if (setupIsraelHayomUrl) setupIsraelHayomUrl.value = String(newsUrls.israelHayomNewsUrl || '');
+  if (setupKanBreakingUrl) setupKanBreakingUrl.value = String(newsUrls.kanBreakingNewsUrl || '');
+  if (setupKanHeadlinesUrl) setupKanHeadlinesUrl.value = String(newsUrls.kanHeadlinesUrl || '');
+}
+
+async function loadSetupConfig(force = false) {
+  if (!setupForm) {
+    return;
+  }
+
+  if (setupConfigLoaded && !force) {
+    return;
+  }
+
+  const response = await fetch('/api/setup/config');
+  if (!response.ok) {
+    throw new Error('Failed to load setup config');
+  }
+
+  const config = await response.json();
+  populateSetupForm(config);
+  setupConfigLoaded = true;
 }
 
 function postControlState(payload) {
@@ -2048,8 +2101,17 @@ function showSetup(options = {}) {
   setupView?.classList.remove('hidden');
   stopWeatherAutoscroll();
 
-  statusText.textContent = 'Setup screen ready';
+  statusText.textContent = 'Loading setup...';
   applyPlaybackState(playback);
+
+  loadSetupConfig(true)
+    .then(() => {
+      statusText.textContent = 'Setup screen ready';
+    })
+    .catch((error) => {
+      console.error('Failed to load setup config:', error);
+      statusText.textContent = 'Failed to load setup settings';
+    });
 }
 
 async function applyControlState(state) {
@@ -2515,6 +2577,48 @@ async function init() {
     }
 
     showSetup();
+  });
+  setupForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const payload = {
+      channelUrls: {
+        '11': String(setupChannel11?.value || '').trim(),
+        '12': String(setupChannel12?.value || '').trim(),
+        '13': String(setupChannel13?.value || '').trim(),
+        '16': String(setupChannel16?.value || '').trim()
+      },
+      emergencyContactsRaw: String(setupEmergencyContacts?.value || '').trim(),
+      weatherCitiesRaw: String(setupWeatherCities?.value || '').trim(),
+      newsUrls: {
+        ynetBreakingNewsUrl: String(setupYnetUrl?.value || '').trim(),
+        makoNewsRssUrl: String(setupMakoUrl?.value || '').trim(),
+        israelHayomNewsUrl: String(setupIsraelHayomUrl?.value || '').trim(),
+        kanBreakingNewsUrl: String(setupKanBreakingUrl?.value || '').trim(),
+        kanHeadlinesUrl: String(setupKanHeadlinesUrl?.value || '').trim()
+      }
+    };
+
+    statusText.textContent = 'Saving setup...';
+
+    try {
+      const response = await fetch('/api/setup/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result?.error || 'Failed to save setup');
+      }
+
+      populateSetupForm(result.config || payload);
+      setupConfigLoaded = true;
+      statusText.textContent = 'Setup saved';
+    } catch (error) {
+      console.error('Failed to save setup config:', error);
+      statusText.textContent = error?.message || 'Failed to save setup';
+    }
   });
   muteButton?.addEventListener('click', () => {
     setMuted(!isEffectivelyMuted());
