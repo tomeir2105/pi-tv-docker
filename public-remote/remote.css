@@ -504,6 +504,7 @@ body {
 .transport-cluster,
 .keypad-cluster,
 .weather-cluster,
+.display-cluster,
 .volume-cluster,
 .status-panel {
   position: relative;

@@ -46,21 +46,24 @@ body {
 .tv-shell {
   width: 100%;
   height: 100%;
-  padding: clamp(12px, 2vw, 28px);
+  padding: clamp(10px, 1.6vw, 22px);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .tv-cabinet {
-  width: min(1400px, 100%);
-  height: min(860px, 100%);
+  width: min(1360px, 100%);
+  height: min(820px, 100%);
+  max-width: 100%;
+  max-height: 100%;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 18px;
-  padding: 18px;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 14px;
+  padding: 14px;
   border-radius: 28px;
   border: 4px solid #2d190a;
+  overflow: hidden;
   background:
     linear-gradient(140deg, rgba(255, 255, 255, 0.08), transparent 35%),
     linear-gradient(155deg, var(--wood-1), var(--wood-2) 45%, var(--wood-3));
@@ -71,6 +74,8 @@ body {
 }
 
 .bezel {
+  min-width: 0;
+  min-height: 0;
   border-radius: 20px;
   padding: 20px;
   border: 3px solid rgba(0, 0, 0, 0.45);
@@ -96,6 +101,7 @@ body {
 .weather-view,
 .alerts-view,
 .emergency-view,
+.setup-view,
 .standby-screen,
 .sleep-screen {
   position: absolute;
@@ -107,8 +113,83 @@ video {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  object-position: center;
   background: radial-gradient(circle at center, #021623 0%, #000 75%);
   filter: contrast(1.03) saturate(1.08);
+}
+
+.setup-view {
+  padding: 14px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background:
+    radial-gradient(circle at 16% 10%, rgba(255, 181, 78, 0.12), transparent 24%),
+    radial-gradient(circle at 84% 12%, rgba(111, 215, 255, 0.12), transparent 28%),
+    linear-gradient(180deg, #101922 0%, #0a1017 55%, #060a10 100%);
+}
+
+.setup-layout {
+  max-width: 980px;
+  margin: 0 auto;
+  display: grid;
+  gap: 14px;
+}
+
+.setup-header h2,
+.setup-section h3 {
+  margin: 0;
+  color: #fff2df;
+}
+
+.setup-header p,
+.setup-kicker,
+.setup-field span {
+  color: rgba(214, 235, 245, 0.82);
+}
+
+.setup-form,
+.setup-section {
+  display: grid;
+  gap: 10px;
+}
+
+.setup-section {
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background:
+    linear-gradient(180deg, rgba(19, 31, 42, 0.96), rgba(9, 16, 24, 0.96));
+}
+
+.setup-field {
+  display: grid;
+  gap: 6px;
+}
+
+.setup-field input,
+.setup-field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(151, 205, 229, 0.24);
+  background: rgba(5, 13, 20, 0.9);
+  color: #f4fbff;
+  font: inherit;
+}
+
+.setup-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.setup-save-button {
+  border: 0;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 700;
+  color: #251608;
+  background: linear-gradient(180deg, #ffd37a, #f0a63a);
 }
 
 body.fullscreen-mode {
@@ -163,6 +244,13 @@ body.fullscreen-mode video {
   background: #000;
 }
 
+.video-wrap.fit-frame video,
+body.fullscreen-mode .video-wrap.fit-frame video {
+  object-fit: contain;
+  object-position: center;
+  background: #000;
+}
+
 body.fullscreen-mode .weather-view,
 body.fullscreen-mode .alerts-view,
 body.fullscreen-mode .emergency-view,
@@ -212,25 +300,19 @@ body.fullscreen-mode .sleep-screen {
 }
 
 .control-panel {
+  min-width: 0;
+  min-height: 0;
   border-radius: 18px;
   border: 2px solid rgba(24, 13, 6, 0.9);
-  padding: 12px;
+  padding: 8px 12px 12px;
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 6px;
+  overflow: hidden;
   background:
     linear-gradient(165deg, rgba(226, 206, 167, 0.7), rgba(153, 128, 86, 0.5)),
     linear-gradient(120deg, #6a573b, #3a2d1d);
   box-shadow: inset 0 1px 8px rgba(255, 255, 255, 0.22), inset 0 -2px 12px rgba(0, 0, 0, 0.45);
-}
-
-.logo {
-  margin: 0;
-  font-family: 'Special Elite', serif;
-  letter-spacing: 2px;
-  font-size: 1.55rem;
-  color: #1b1208;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
 .subtitle {
@@ -313,16 +395,16 @@ body.fullscreen-mode .sleep-screen {
 }
 
 .fullscreen-dial {
-  width: 78px;
+  width: 56px;
   max-width: none;
   align-items: center;
   padding-bottom: 0;
   flex: 0 0 auto;
-  transform: translateY(14px) rotate(var(--dial-angle, 0deg));
+  transform: translateY(10px) rotate(var(--dial-angle, 0deg));
 }
 
 .fullscreen-dial .dial-icon {
-  font-size: 3.4rem;
+  font-size: 2.35rem;
 }
 
 .dial-action::before {
@@ -357,6 +439,7 @@ body.fullscreen-mode .sleep-screen {
 
 .dial-cluster-bottom {
   margin-top: 2px;
+  margin-bottom: 10px;
 }
 
 .dial-cluster-bottom .dial-label {
@@ -369,7 +452,7 @@ body.fullscreen-mode .sleep-screen {
   padding-bottom: 0;
   flex: 0 0 auto;
   align-items: center;
-  transform: translateY(14px) rotate(var(--dial-angle, 0deg));
+  transform: translateY(4px) rotate(var(--dial-angle, 0deg));
 }
 
 .dial-volume-large::before {
@@ -382,17 +465,17 @@ body.fullscreen-mode .sleep-screen {
 }
 
 .mute-dial {
-  width: 42px;
+  width: 56px;
   max-width: none;
   padding-bottom: 0;
   flex: 0 0 auto;
   align-items: center;
-  transform: translateY(30px) rotate(var(--dial-angle, 0deg));
+  transform: translateY(10px) rotate(var(--dial-angle, 0deg));
 }
 
 .mute-dial-icon {
-  width: 1.18rem;
-  height: 1.18rem;
+  width: 1.45rem;
+  height: 1.45rem;
   display: block;
 }
 
@@ -404,8 +487,14 @@ body.fullscreen-mode .sleep-screen {
 
 .channel-panel {
   display: grid;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.weather-panel {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 8px;
 }
 
 .channel-panel-label {
@@ -419,7 +508,7 @@ body.fullscreen-mode .sleep-screen {
 .btn-group {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
 }
 
 #channelButtons {
@@ -428,12 +517,12 @@ body.fullscreen-mode .sleep-screen {
 
 .nav-btn {
   border: 0;
-  min-height: 68px;
+  min-height: 58px;
   aspect-ratio: 1 / 1;
   border-radius: 50%;
-  padding: 8px 5px 10px;
+  padding: 6px 4px 8px;
   font-family: 'Share Tech Mono', monospace;
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   font-weight: 700;
   color: #fff3d7;
   background: linear-gradient(180deg, #7c5d35, #4a3218);
@@ -459,27 +548,29 @@ body.fullscreen-mode .sleep-screen {
 .channel-number {
   display: block;
   text-align: center;
-  font-size: 1.35rem;
+  font-size: 1.15rem;
   font-weight: 700;
   line-height: 1.05;
 }
 
-.news-icon {
-  width: 2.35rem;
-  height: 2.35rem;
+.news-icon,
+.weather-nav-icon,
+.camera-channel-icon {
+  width: 2.2rem;
+  height: 2.2rem;
   margin: 0 auto;
+  display: block;
 }
 
-.news-icon svg {
+.news-icon svg,
+.weather-nav-icon svg,
+.camera-channel-icon svg {
   display: block;
   width: 100%;
   height: 100%;
 }
 
 .weather-nav-icon {
-  width: 2rem;
-  height: 2rem;
-  margin: 0 auto;
   transform: translateY(-2px);
 }
 
@@ -487,6 +578,11 @@ body.fullscreen-mode .sleep-screen {
   display: block;
   width: 100%;
   height: 100%;
+}
+
+.setup-icon {
+  font-size: 1.65rem;
+  line-height: 1;
 }
 
 .weather-btn {
@@ -500,6 +596,11 @@ body.fullscreen-mode .sleep-screen {
 .emergency-nav-btn {
   color: #fff3ea;
   background: linear-gradient(180deg, #9d3d2f, #5a1818);
+}
+
+.emergency-nav-btn .channel-number {
+  font-size: 2.1rem;
+  line-height: 1;
 }
 
 .remote-qr-card {
@@ -753,7 +854,7 @@ body.fullscreen-mode .sleep-screen {
 
 .alerts-summary-line {
   color: #fff2d7;
-  font-size: 1rem;
+  font-size: 1.14rem;
   line-height: 1.35;
 }
 
@@ -802,7 +903,7 @@ body.fullscreen-mode .sleep-screen {
 .alerts-section .forecast-header h3 {
   margin: 0;
   color: #fff4da;
-  font-size: 1.1rem;
+  font-size: 1.28rem;
 }
 
 .alerts-active-list,
@@ -825,12 +926,16 @@ body.fullscreen-mode .sleep-screen {
 
 .alerts-active-section {
   border-left: 6px solid var(--coral);
+  min-height: 0;
+  overflow: hidden;
+  direction: rtl;
 }
 
 .alerts-history-section {
   border-left: 6px solid var(--amber);
   min-height: 0;
   overflow: hidden;
+  direction: rtl;
 }
 
 .alerts-news-section {
@@ -841,6 +946,13 @@ body.fullscreen-mode .sleep-screen {
 }
 
 .alerts-news-section .forecast-header {
+  direction: ltr;
+  text-align: left;
+  justify-items: start;
+}
+
+.alerts-active-section .forecast-header,
+.alerts-history-section .forecast-header {
   direction: ltr;
   text-align: left;
   justify-items: start;
@@ -870,6 +982,17 @@ body.fullscreen-mode .sleep-screen {
   max-height: 100%;
   overflow: auto;
   padding-right: 6px;
+  scrollbar-width: thin;
+}
+
+.alerts-active-list,
+.alerts-history-list {
+  direction: rtl;
+}
+
+.alerts-active-list > *,
+.alerts-history-list > * {
+  direction: ltr;
 }
 
 .alerts-area-item {
@@ -877,7 +1000,7 @@ body.fullscreen-mode .sleep-screen {
   border-left: 4px solid var(--coral);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   color: #fff8ea;
-  font-size: 1rem;
+  font-size: 1.14rem;
   font-weight: 700;
   line-height: 1.35;
   text-align: left;
@@ -894,20 +1017,20 @@ body.fullscreen-mode .sleep-screen {
 
 .alerts-history-title {
   color: #fff3d7;
-  font-size: 1rem;
+  font-size: 1.12rem;
   font-weight: 700;
 }
 
 .alerts-history-time {
   margin-top: 4px;
   color: rgba(247, 251, 255, 0.78);
-  font-size: 0.82rem;
+  font-size: 0.92rem;
 }
 
 .alerts-history-locations {
   margin-top: 8px;
   color: rgba(255, 248, 234, 0.88);
-  font-size: 0.9rem;
+  font-size: 1rem;
 }
 
 .alerts-news-item {
@@ -921,9 +1044,9 @@ body.fullscreen-mode .sleep-screen {
 
 .alerts-news-line {
   display: grid;
-  grid-template-columns: 88px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
-  column-gap: 8px;
+  row-gap: 6px;
   direction: rtl;
   text-align: right;
   width: 100%;
@@ -931,17 +1054,18 @@ body.fullscreen-mode .sleep-screen {
 
 .alerts-news-source {
   color: rgba(247, 251, 255, 0.62);
-  font-size: 0.75rem;
+  font-size: 0.86rem;
   letter-spacing: 0.04em;
   direction: rtl;
   text-align: right;
-  white-space: nowrap;
+  white-space: normal;
+  width: 100%;
 }
 
 .alerts-news-title {
   display: block;
   color: #fff8ea;
-  font-size: 1.02rem;
+  font-size: 1.16rem;
   font-weight: 700;
   line-height: 1.2;
   text-decoration: none;
@@ -949,6 +1073,7 @@ body.fullscreen-mode .sleep-screen {
   text-align: right;
   unicode-bidi: plaintext;
   min-width: 0;
+  width: 100%;
 }
 
 .alerts-news-title:hover,
@@ -1012,6 +1137,10 @@ body.fullscreen-mode .sleep-screen {
   width: min(190px, 38vw);
   display: grid;
   gap: 4px;
+}
+
+.weather-city-picker-panel {
+  width: 100%;
 }
 
 .weather-city-picker select,
@@ -1385,5 +1514,75 @@ body.fullscreen-mode .sleep-screen {
 
   .forecast-pair {
     grid-template-columns: 1fr;
+  }
+
+  .alerts-layout {
+    max-width: none;
+  }
+
+  .alerts-board {
+    grid-template-columns: 1fr;
+  }
+
+  .alerts-column-main {
+    order: 1;
+  }
+
+  .alerts-column-side {
+    display: none;
+  }
+
+  .alerts-news-section {
+    min-height: 52vh;
+  }
+
+  .emergency-view {
+    overflow-y: auto;
+    padding: 14px 14px 18px;
+  }
+
+  .emergency-layout {
+    height: auto;
+    gap: 12px;
+    max-width: none;
+  }
+
+  .emergency-header h2 {
+    font-size: clamp(1.5rem, 7vw, 2.2rem);
+  }
+
+  .emergency-header p {
+    font-size: 0.82rem;
+  }
+
+  .emergency-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .emergency-card,
+  .emergency-card-primary,
+  .emergency-card-wide {
+    grid-column: auto;
+  }
+
+  .emergency-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+    padding: 12px 14px;
+    border-radius: 14px;
+  }
+
+  .emergency-name {
+    font-size: 0.92rem;
+    line-height: 1.2;
+  }
+
+  .emergency-number {
+    margin-top: 0;
+    font-size: clamp(1.05rem, 5vw, 1.4rem);
+    line-height: 1.15;
+    word-break: break-word;
   }
 }

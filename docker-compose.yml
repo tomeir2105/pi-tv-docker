@@ -12,3 +12,4 @@ services:
       - "${REMOTE_PORT:-3001}:${REMOTE_PORT:-3001}"
     volumes:
       - ./logs:/app/logs
+      - ./data:/app/data

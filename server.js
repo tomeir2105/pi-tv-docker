@@ -15,6 +15,9 @@ const remotePort = Number(process.env.REMOTE_PORT || 3001);
 const remoteControlUrl = String(process.env.REMOTE_CONTROL_URL || '').trim();
 const kioskRestartScriptPath = path.join(__dirname, 'scripts', 'restart-kiosk-browser.sh');
 const logsDirPath = path.join(__dirname, 'logs');
+const dataDirPath = path.join(__dirname, 'data');
+const settingsFilePath = path.join(dataDirPath, 'settings.json');
+const rtspRelayRootDirPath = path.join(__dirname, '.tmp', 'rtsp-relay');
 const customBeepSoundPath = path.join(__dirname, 'public', 'beep.mp3');
 const piBeepSoundPath = '/usr/share/sounds/alsa/Front_Center.wav';
 const alsaBeepDevice = process.env.ALSA_BEEP_DEVICE || 'default';
@@ -39,6 +42,10 @@ const hlsMaxBufferLength = Math.max(30, Number(process.env.HLS_MAX_BUFFER_LENGTH
 const hlsMaxMaxBufferLength = Math.max(hlsMaxBufferLength, Number(process.env.HLS_MAX_MAX_BUFFER_LENGTH || 180));
 const hlsMaxBufferHole = Math.max(0.1, Number(process.env.HLS_MAX_BUFFER_HOLE || 1.5));
 const hlsHighBufferWatchdogPeriod = Math.max(1, Number(process.env.HLS_HIGH_BUFFER_WATCHDOG_PERIOD || 4));
+const rtspRelaySegmentDuration = Math.max(1, Number(process.env.RTSP_RELAY_SEGMENT_DURATION || 2));
+const rtspRelaySegmentCount = Math.max(3, Number(process.env.RTSP_RELAY_SEGMENT_COUNT || 6));
+const rtspRelayStartupTimeoutMs = Math.max(2000, Number(process.env.RTSP_RELAY_STARTUP_TIMEOUT_MS || 12000));
+const rtspRelayIdleTimeoutMs = Math.max(15000, Number(process.env.RTSP_RELAY_IDLE_TIMEOUT_MS || 120000));
 const tvNewsPageLimit = Math.max(1, Math.min(maxStoredMessages, Number(process.env.TV_NEWS_PAGE_LIMIT || 48)));
 const tvNewsMaxAgeMinutes = Math.max(1, Number(process.env.TV_NEWS_MAX_AGE_MINUTES || 120));
 const alertsNewsScrollDurationMs = Math.max(1000, Number(process.env.ALERTS_NEWS_SCROLL_DURATION_MS || 120000));
@@ -61,6 +68,10 @@ const weatherCitiesPriority = (process.env.WEATHER_CITIES_PRIORITY || '')
 
 function getEmergencyContacts() {
   const rawValue = String(process.env.EMERGENCY_CONTACTS || '').trim();
+  return parseEmergencyContacts(rawValue);
+}
+
+function parseEmergencyContacts(rawValue) {
   if (!rawValue) {
     return [];
   }
@@ -96,6 +107,22 @@ function parseEnvUrlList(name) {
     .split(',')
     .map((value) => value.trim())
     .filter(Boolean);
+}
+
+function ensureDataDir() {
+  try {
+    fs.mkdirSync(dataDirPath, { recursive: true });
+  } catch (error) {
+    console.error('Failed creating data directory:', error);
+  }
+}
+
+function isRtspUrl(url) {
+  return /^rtsp:\/\//i.test(String(url || '').trim());
+}
+
+function redactUrlCredentials(url) {
+  return String(url || '').replace(/(\/\/)([^/@]+)@/u, '$1***@');
 }
 
 function getRequestProtocol(req) {
@@ -189,8 +216,41 @@ const defaultWeatherCitiesConfig = {
 
 const weatherGeocodeCache = new Map();
 
+function loadPersistedSettings() {
+  ensureDataDir();
+
+  try {
+    if (!fs.existsSync(settingsFilePath)) {
+      return {};
+    }
+
+    const parsed = JSON.parse(fs.readFileSync(settingsFilePath, 'utf8'));
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch (error) {
+    console.error('Failed loading persisted settings, using defaults:', error);
+    return {};
+  }
+}
+
+let persistedSettings = loadPersistedSettings();
+
+function getCurrentSettings() {
+  return persistedSettings;
+}
+
+function savePersistedSettings(nextSettings) {
+  ensureDataDir();
+  fs.writeFileSync(settingsFilePath, JSON.stringify(nextSettings, null, 2));
+  persistedSettings = nextSettings;
+  weatherGeocodeCache.clear();
+}
+
 function getWeatherCitiesConfig() {
   const rawValue = String(process.env.WEATHER_CITIES || '').trim();
+  return parseWeatherCitiesConfig(rawValue);
+}
+
+function parseWeatherCitiesConfig(rawValue) {
   if (!rawValue) {
     return defaultWeatherCitiesConfig;
   }
@@ -240,33 +300,71 @@ function getWeatherCitiesConfig() {
 }
 
 function buildLiveChannel(id, name) {
+  const currentSettings = getCurrentSettings();
+  const configuredChannelUrls =
+    currentSettings.channelUrls && typeof currentSettings.channelUrls === 'object' && !Array.isArray(currentSettings.channelUrls)
+      ? currentSettings.channelUrls
+      : {};
+  const sourceUrl = String(configuredChannelUrls[id] || process.env[`CHANNEL${id}_URL`] || '').trim();
+  const usesRtspRelay = isRtspUrl(sourceUrl);
+
   return {
     id,
     name,
-    url: process.env[`CHANNEL${id}_URL`] || '',
+    url: usesRtspRelay ? `/api/streams/channel-${id}/index.m3u8` : sourceUrl,
+    sourceUrl,
+    usesRtspRelay,
     fallbackUrls: parseEnvUrlList(`CHANNEL${id}_FALLBACK_URLS`)
   };
 }
 
-const channels = [
-  buildLiveChannel('11', 'Channel 11'),
-  buildLiveChannel('12', 'Channel 12'),
-  buildLiveChannel('13', 'Channel 13'),
-  { id: '14', name: 'Alerts', type: 'alerts' },
-  { id: '15', name: 'Emergency', type: 'emergency' }
-];
-const defaultChannelId =
-  channels.find((channel) => channel.id === String(process.env.DEFAULT_CHANNEL_ID || '').trim())?.id || '11';
+function getChannels() {
+  return [
+    buildLiveChannel('11', 'Channel 11'),
+    buildLiveChannel('12', 'Channel 12'),
+    buildLiveChannel('13', 'Channel 13'),
+    buildLiveChannel('16', 'Camera'),
+    { id: '14', name: 'Alerts', type: 'alerts' },
+    { id: '15', name: 'Emergency', type: 'emergency' }
+  ];
+}
 
-const weatherCitiesConfig = getWeatherCitiesConfig();
-const emergencyContacts = getEmergencyContacts();
-const weatherCities = Object.entries(weatherCitiesConfig).map(([id, city]) => ({
-  id,
-  name: city.name,
-  lat: city.lat ?? null,
-  lon: city.lon ?? null,
-  query: city.query || city.name
-}));
+function getChannelById(channelId) {
+  return getChannels().find((channel) => channel.id === String(channelId || '').trim()) || null;
+}
+
+function getDefaultChannelId() {
+  const channelIds = new Set(getChannels().map((channel) => channel.id));
+  const persistedDefault = String(getCurrentSettings().defaultChannelId || '').trim();
+  const envDefault = String(process.env.DEFAULT_CHANNEL_ID || '').trim();
+  if (persistedDefault && channelIds.has(persistedDefault)) {
+    return persistedDefault;
+  }
+  if (envDefault && channelIds.has(envDefault)) {
+    return envDefault;
+  }
+  return '11';
+}
+
+function getCurrentWeatherCitiesConfig() {
+  const rawValue = String(getCurrentSettings().weatherCitiesRaw || process.env.WEATHER_CITIES || '').trim();
+  return parseWeatherCitiesConfig(rawValue);
+}
+
+function getCurrentEmergencyContacts() {
+  const rawValue = String(getCurrentSettings().emergencyContactsRaw || process.env.EMERGENCY_CONTACTS || '').trim();
+  return parseEmergencyContacts(rawValue);
+}
+
+function getWeatherCities() {
+  return Object.entries(getCurrentWeatherCitiesConfig()).map(([id, city]) => ({
+    id,
+    name: city.name,
+    lat: city.lat ?? null,
+    lon: city.lon ?? null,
+    query: city.query || city.name
+  }));
+}
 
 function normalizeCityMatchValue(value) {
   return String(value || '')
@@ -276,12 +374,14 @@ function normalizeCityMatchValue(value) {
     .replace(/\s+/g, '');
 }
 
-const weatherCityAliasesById = Object.fromEntries(
-  Object.entries(weatherCitiesConfig).map(([id, city]) => [id, Array.isArray(city.aliases) ? city.aliases : []])
-);
+function getWeatherCityAliasesById() {
+  return Object.fromEntries(
+    Object.entries(getCurrentWeatherCitiesConfig()).map(([id, city]) => [id, Array.isArray(city.aliases) ? city.aliases : []])
+  );
+}
 
 function getWeatherCityMatchKeys(city) {
-  const aliasValues = weatherCityAliasesById[city.id] || [];
+  const aliasValues = getWeatherCityAliasesById()[city.id] || [];
   return new Set(
     [city.id, city.name, ...aliasValues]
       .map(normalizeCityMatchValue)
@@ -318,7 +418,7 @@ function getPriorityMatchKeys(preferredValue) {
     return [];
   }
 
-  const matchingAliasEntry = Object.entries(weatherCityAliasesById).find(([_cityId, aliases]) => {
+  const matchingAliasEntry = Object.entries(getWeatherCityAliasesById()).find(([_cityId, aliases]) => {
     const normalizedAliases = aliases.map(normalizeCityMatchValue);
     return normalizedAliases.includes(preferredKey);
   });
@@ -328,7 +428,7 @@ function getPriorityMatchKeys(preferredValue) {
   }
 
   const [cityId, aliases] = matchingAliasEntry;
-  const city = weatherCities.find((entry) => entry.id === cityId);
+  const city = getWeatherCities().find((entry) => entry.id === cityId);
 
   return Array.from(new Set(
     [preferredValue, cityId, city?.name, ...aliases]
@@ -413,9 +513,21 @@ async function resolveWeatherCityCoordinates(city) {
   return resolved;
 }
 
-const sortedWeatherCities = sortWeatherCities(weatherCities, weatherCitiesPriority);
-const defaultWeatherCityId =
-  weatherCities.find((city) => city.id === process.env.DEFAULT_WEATHER_CITY)?.id || weatherCities[0]?.id || 'bat-hefer';
+function getSortedWeatherCities() {
+  return sortWeatherCities(getWeatherCities(), weatherCitiesPriority);
+}
+
+function getDefaultWeatherCityId() {
+  const weatherCities = getWeatherCities();
+  const persistedDefault = String(getCurrentSettings().defaultWeatherCityId || '').trim();
+  const envDefault = String(process.env.DEFAULT_WEATHER_CITY || '').trim();
+  return (
+    weatherCities.find((city) => city.id === persistedDefault)?.id ||
+    weatherCities.find((city) => city.id === envDefault)?.id ||
+    weatherCities[0]?.id ||
+    'bat-hefer'
+  );
+}
 
 function ensureLogsDir() {
   try {
@@ -539,7 +651,214 @@ function createApiRequestLogger(appName) {
   };
 }
 
+function ensureRtspRelayRootDir() {
+  try {
+    fs.mkdirSync(rtspRelayRootDirPath, { recursive: true });
+  } catch (error) {
+    console.error('Failed creating RTSP relay directory:', error);
+  }
+}
+
+function getRtspRelayOutputDir(channelId) {
+  return path.join(rtspRelayRootDirPath, `channel-${channelId}`);
+}
+
+function resetRtspRelayOutputDir(channelId) {
+  const outputDir = getRtspRelayOutputDir(channelId);
+  fs.rmSync(outputDir, { recursive: true, force: true });
+  fs.mkdirSync(outputDir, { recursive: true });
+  return outputDir;
+}
+
+function waitForFile(filePath, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const startedAt = Date.now();
+
+    function check() {
+      fs.stat(filePath, (error, stats) => {
+        if (!error && stats.isFile() && stats.size > 0) {
+          resolve();
+          return;
+        }
+
+        if (Date.now() - startedAt >= timeoutMs) {
+          reject(new Error(`Timed out waiting for ${path.basename(filePath)}`));
+          return;
+        }
+
+        setTimeout(check, 200);
+      });
+    }
+
+    check();
+  });
+}
+
+const rtspRelayStates = new Map();
+
+function stopRtspRelay(channelId, reason = 'manual') {
+  const relayState = rtspRelayStates.get(channelId);
+  if (!relayState) {
+    return;
+  }
+
+  rtspRelayStates.delete(channelId);
+
+  if (relayState.shutdownTimer) {
+    clearTimeout(relayState.shutdownTimer);
+  }
+
+  relayState.stopped = true;
+
+  if (relayState.process && !relayState.process.killed) {
+    relayState.process.kill('SIGTERM');
+    relayState.shutdownTimer = setTimeout(() => {
+      if (relayState.process && !relayState.process.killed) {
+        relayState.process.kill('SIGKILL');
+      }
+    }, 3000);
+  }
+
+  logServerEvent('info', 'rtsp_relay_stopped', {
+    channelId,
+    reason
+  });
+}
+
+function stopAllRtspRelays(reason = 'shutdown') {
+  Array.from(rtspRelayStates.keys()).forEach((channelId) => stopRtspRelay(channelId, reason));
+}
+
+function startRtspRelay(channel) {
+  const sourceUrl = String(channel?.sourceUrl || '').trim();
+  if (!channel?.usesRtspRelay || !sourceUrl) {
+    return null;
+  }
+
+  const existingRelay = rtspRelayStates.get(channel.id);
+  if (existingRelay && existingRelay.sourceUrl === sourceUrl && existingRelay.process && !existingRelay.exited) {
+    existingRelay.lastAccessedAt = Date.now();
+    return existingRelay;
+  }
+
+  if (existingRelay) {
+    stopRtspRelay(channel.id, 'restart');
+  }
+
+  ensureRtspRelayRootDir();
+
+  const outputDir = resetRtspRelayOutputDir(channel.id);
+  const playlistPath = path.join(outputDir, 'index.m3u8');
+  const segmentPattern = path.join(outputDir, 'segment-%03d.ts');
+  const ffmpegArgs = [
+    '-hide_banner',
+    '-loglevel',
+    'warning',
+    '-rtsp_transport',
+    'tcp',
+    '-i',
+    sourceUrl,
+    '-an',
+    '-map',
+    '0:v:0',
+    '-c:v',
+    'copy',
+    '-f',
+    'hls',
+    '-hls_time',
+    String(rtspRelaySegmentDuration),
+    '-hls_list_size',
+    String(rtspRelaySegmentCount),
+    '-hls_flags',
+    'delete_segments+append_list+omit_endlist+program_date_time',
+    '-hls_segment_filename',
+    segmentPattern,
+    playlistPath
+  ];
+
+  const relayProcess = spawn('ffmpeg', ffmpegArgs, {
+    stdio: ['ignore', 'ignore', 'pipe']
+  });
+
+  const relayState = {
+    channelId: channel.id,
+    sourceUrl,
+    outputDir,
+    playlistPath,
+    process: relayProcess,
+    exited: false,
+    lastAccessedAt: Date.now(),
+    startedAt: Date.now(),
+    shutdownTimer: null,
+    stopped: false
+  };
+
+  relayProcess.stderr.on('data', (chunk) => {
+    const message = String(chunk || '').trim();
+    if (!message) {
+      return;
+    }
+
+    logServerEvent('debug', 'rtsp_relay_ffmpeg', {
+      channelId: channel.id,
+      message
+    });
+  });
+
+  relayProcess.on('error', (error) => {
+    logServerEvent('error', 'rtsp_relay_error', {
+      channelId: channel.id,
+      sourceUrl: redactUrlCredentials(sourceUrl),
+      message: error?.message || String(error)
+    });
+  });
+
+  relayProcess.on('exit', (code, signal) => {
+    relayState.exited = true;
+    if (relayState.shutdownTimer) {
+      clearTimeout(relayState.shutdownTimer);
+      relayState.shutdownTimer = null;
+    }
+
+    logServerEvent(relayState.stopped ? 'info' : 'warn', 'rtsp_relay_exit', {
+      channelId: channel.id,
+      sourceUrl: redactUrlCredentials(sourceUrl),
+      code,
+      signal,
+      uptimeMs: Date.now() - relayState.startedAt
+    });
+
+    if (rtspRelayStates.get(channel.id) === relayState) {
+      rtspRelayStates.delete(channel.id);
+    }
+  });
+
+  rtspRelayStates.set(channel.id, relayState);
+
+  logServerEvent('info', 'rtsp_relay_started', {
+    channelId: channel.id,
+    sourceUrl: redactUrlCredentials(sourceUrl),
+    outputDir,
+    segmentDuration: rtspRelaySegmentDuration,
+    segmentCount: rtspRelaySegmentCount
+  });
+
+  return relayState;
+}
+
+async function ensureRtspRelayReady(channel) {
+  const relayState = startRtspRelay(channel);
+  if (!relayState) {
+    throw new Error(`Channel ${channel?.id || 'unknown'} is not configured for RTSP relay`);
+  }
+
+  relayState.lastAccessedAt = Date.now();
+  await waitForFile(relayState.playlistPath, rtspRelayStartupTimeoutMs);
+  return relayState;
+}
+
 ensureLogsDir();
+ensureRtspRelayRootDir();
 logServerEvent('info', 'server_boot', {
   tvPort,
   remotePort,
@@ -562,10 +881,30 @@ process.on('unhandledRejection', (reason) => {
   console.error('Unhandled rejection:', reason);
 });
 
+setInterval(() => {
+  const cutoff = Date.now() - rtspRelayIdleTimeoutMs;
+
+  for (const [channelId, relayState] of rtspRelayStates.entries()) {
+    if (relayState.lastAccessedAt < cutoff) {
+      stopRtspRelay(channelId, 'idle_timeout');
+    }
+  }
+}, Math.max(5000, Math.min(30000, Math.floor(rtspRelayIdleTimeoutMs / 2)))).unref();
+
+process.on('SIGINT', () => {
+  stopAllRtspRelays('sigint');
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  stopAllRtspRelays('sigterm');
+  process.exit(0);
+});
+
 let controlState = {
   mode: 'channel',
-  channelId: defaultChannelId,
-  weatherCityId: defaultWeatherCityId,
+  channelId: getDefaultChannelId(),
+  weatherCityId: getDefaultWeatherCityId(),
   fullscreen: false,
   playback: 'playing',
   weatherAutoscroll: 'playing',
@@ -952,19 +1291,35 @@ function getRecentNewsItems(items, now = Date.now(), maxAgeMinutesOverride = new
   });
 }
 
+function getConfiguredNewsUrls() {
+  const newsUrls =
+    getCurrentSettings().newsUrls && typeof getCurrentSettings().newsUrls === 'object' && !Array.isArray(getCurrentSettings().newsUrls)
+      ? getCurrentSettings().newsUrls
+      : {};
+
+  return {
+    ynetBreakingNewsUrl: String(newsUrls.ynetBreakingNewsUrl || ynetBreakingNewsUrl || '').trim(),
+    makoNewsRssUrl: String(newsUrls.makoNewsRssUrl || makoNewsRssUrl || '').trim(),
+    israelHayomNewsUrl: String(newsUrls.israelHayomNewsUrl || israelHayomNewsUrl || '').trim(),
+    kanBreakingNewsUrl: String(newsUrls.kanBreakingNewsUrl || kanBreakingNewsUrl || '').trim(),
+    kanHeadlinesUrl: String(newsUrls.kanHeadlinesUrl || kanHeadlinesUrl || '').trim()
+  };
+}
+
 async function refreshNewsCombined(force = false) {
   const now = Date.now();
   if (!force && now - newsState.fetchedAt < newsCacheMs && newsState.items.length > 0) {
     return newsState.items;
   }
 
+  const configuredNewsUrls = getConfiguredNewsUrls();
   const sources = [
-    { kind: 'ynet-page', label: 'ynet Breaking', url: ynetBreakingNewsUrl },
-    { kind: 'rss', label: 'mako / N12', url: makoNewsRssUrl, homepageUrl: 'https://www.mako.co.il/news' },
-    { kind: 'israel-hayom-page', label: 'Israel Hayom', url: israelHayomNewsUrl },
-    { kind: 'kan-page', label: 'Kan Breaking', url: kanBreakingNewsUrl },
-    { kind: 'kan-page', label: 'Kan Headlines', url: kanHeadlinesUrl }
-  ];
+    { kind: 'ynet-page', label: 'ynet Breaking', url: configuredNewsUrls.ynetBreakingNewsUrl },
+    { kind: 'rss', label: 'mako / N12', url: configuredNewsUrls.makoNewsRssUrl, homepageUrl: 'https://www.mako.co.il/news' },
+    { kind: 'israel-hayom-page', label: 'Israel Hayom', url: configuredNewsUrls.israelHayomNewsUrl },
+    { kind: 'kan-page', label: 'Kan Breaking', url: configuredNewsUrls.kanBreakingNewsUrl },
+    { kind: 'kan-page', label: 'Kan Headlines', url: configuredNewsUrls.kanHeadlinesUrl }
+  ].filter((source) => source.url);
 
   const results = await Promise.allSettled(sources.map((source) => fetchNewsSource(source)));
   const items = [];
@@ -1273,6 +1628,81 @@ async function navigateChromiumBack() {
   return true;
 }
 
+function registerRtspRelayRoutes(app) {
+  app.get('/api/streams/channel-:channelId/index.m3u8', async (req, res) => {
+    const channel = getChannelById(req.params.channelId);
+    if (!channel?.usesRtspRelay) {
+      res.status(404).json({ error: 'Unknown RTSP relay channel' });
+      return;
+    }
+
+    try {
+      const relayState = await ensureRtspRelayReady(channel);
+      relayState.lastAccessedAt = Date.now();
+      res.setHeader('Cache-Control', 'no-store');
+      res.type('application/vnd.apple.mpegurl');
+      res.sendFile(relayState.playlistPath);
+    } catch (error) {
+      logServerEvent('error', 'rtsp_relay_playlist_failed', {
+        channelId: channel.id,
+        sourceUrl: redactUrlCredentials(channel.sourceUrl),
+        message: error?.message || String(error)
+      });
+      res.status(502).json({ error: `Failed to start RTSP relay for channel ${channel.id}` });
+    }
+  });
+
+  app.get('/api/streams/channel-:channelId/:fileName', async (req, res) => {
+    const channel = getChannelById(req.params.channelId);
+    const fileName = String(req.params.fileName || '').trim();
+    if (!channel?.usesRtspRelay || !/^[A-Za-z0-9._-]+$/u.test(fileName)) {
+      res.status(404).end();
+      return;
+    }
+
+    try {
+      const relayState = await ensureRtspRelayReady(channel);
+      const filePath = path.join(relayState.outputDir, fileName);
+      const relativePath = path.relative(relayState.outputDir, filePath);
+      if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+        res.status(400).end();
+        return;
+      }
+
+      await waitForFile(filePath, 5000);
+      relayState.lastAccessedAt = Date.now();
+      res.setHeader('Cache-Control', 'no-store');
+      if (fileName.toLowerCase().endsWith('.ts')) {
+        res.type('video/mp2t');
+      }
+      res.sendFile(filePath);
+    } catch (error) {
+      logServerEvent('warn', 'rtsp_relay_segment_failed', {
+        channelId: channel.id,
+        fileName,
+        message: error?.message || String(error)
+      });
+      res.status(404).end();
+    }
+  });
+}
+
+function buildSetupConfigResponse() {
+  const currentSettings = getCurrentSettings();
+
+  return {
+    channelUrls: {
+      '11': String(currentSettings.channelUrls?.['11'] || process.env.CHANNEL11_URL || ''),
+      '12': String(currentSettings.channelUrls?.['12'] || process.env.CHANNEL12_URL || ''),
+      '13': String(currentSettings.channelUrls?.['13'] || process.env.CHANNEL13_URL || ''),
+      '16': String(currentSettings.channelUrls?.['16'] || process.env.CHANNEL16_URL || '')
+    },
+    emergencyContactsRaw: String(currentSettings.emergencyContactsRaw || process.env.EMERGENCY_CONTACTS || ''),
+    weatherCitiesRaw: String(currentSettings.weatherCitiesRaw || process.env.WEATHER_CITIES || ''),
+    newsUrls: getConfiguredNewsUrls()
+  };
+}
+
 function registerApiRoutes(app, appName) {
   app.use(createApiRequestLogger(appName));
   app.use(express.json());
@@ -1297,8 +1727,58 @@ function registerApiRoutes(app, appName) {
     res.status(202).json({ ok: true });
   });
 
+  app.get('/api/setup/config', (_req, res) => {
+    res.json(buildSetupConfigResponse());
+  });
+
+  app.post('/api/setup/config', (req, res) => {
+    try {
+      const payload = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {};
+      const incomingChannelUrls =
+        payload.channelUrls && typeof payload.channelUrls === 'object' && !Array.isArray(payload.channelUrls)
+          ? payload.channelUrls
+          : {};
+      const nextSettings = {
+        ...getCurrentSettings(),
+        channelUrls: {
+          '11': String(incomingChannelUrls['11'] || '').trim(),
+          '12': String(incomingChannelUrls['12'] || '').trim(),
+          '13': String(incomingChannelUrls['13'] || '').trim(),
+          '16': String(incomingChannelUrls['16'] || '').trim()
+        },
+        emergencyContactsRaw: String(payload.emergencyContactsRaw || '').trim(),
+        weatherCitiesRaw: String(payload.weatherCitiesRaw || '').trim(),
+        newsUrls: {
+          ynetBreakingNewsUrl: String(payload.newsUrls?.ynetBreakingNewsUrl || '').trim(),
+          makoNewsRssUrl: String(payload.newsUrls?.makoNewsRssUrl || '').trim(),
+          israelHayomNewsUrl: String(payload.newsUrls?.israelHayomNewsUrl || '').trim(),
+          kanBreakingNewsUrl: String(payload.newsUrls?.kanBreakingNewsUrl || '').trim(),
+          kanHeadlinesUrl: String(payload.newsUrls?.kanHeadlinesUrl || '').trim()
+        }
+      };
+
+      parseEmergencyContacts(nextSettings.emergencyContactsRaw);
+      parseWeatherCitiesConfig(nextSettings.weatherCitiesRaw);
+      savePersistedSettings(nextSettings);
+
+      const availableChannelIds = new Set(getChannels().map((channel) => channel.id));
+      const availableWeatherCityIds = new Set(getWeatherCities().map((city) => city.id));
+      if (!availableChannelIds.has(controlState.channelId)) {
+        controlState.channelId = getDefaultChannelId();
+      }
+      if (!availableWeatherCityIds.has(controlState.weatherCityId)) {
+        controlState.weatherCityId = getDefaultWeatherCityId();
+      }
+      controlState.updatedAt = Date.now();
+
+      res.json({ ok: true, config: buildSetupConfigResponse() });
+    } catch (error) {
+      res.status(400).json({ error: error?.message || 'Failed to save setup config' });
+    }
+  });
+
   app.get('/api/channels', (_req, res) => {
-    res.json(channels);
+    res.json(getChannels());
   });
 
   app.get('/api/control/state', (_req, res) => {
@@ -1327,7 +1807,7 @@ function registerApiRoutes(app, appName) {
       newsMaxAgeMinutes,
       maxStoredMessages,
       remoteControlUrl: getRemoteControlUrl(req),
-      emergencyContacts,
+      emergencyContacts: getCurrentEmergencyContacts(),
       clientDiagnosticsEnabled: enableClientDiagnostics
     });
   });
@@ -1366,11 +1846,11 @@ function registerApiRoutes(app, appName) {
       next.mode = mode;
     }
 
-    if (typeof channelId === 'string' && channels.some((ch) => ch.id === channelId)) {
+    if (typeof channelId === 'string' && getChannels().some((ch) => ch.id === channelId)) {
       next.channelId = channelId;
     }
 
-    if (typeof weatherCityId === 'string' && weatherCities.some((city) => city.id === weatherCityId)) {
+    if (typeof weatherCityId === 'string' && getWeatherCities().some((city) => city.id === weatherCityId)) {
       next.weatherCityId = weatherCityId;
     }
 
@@ -1571,13 +2051,15 @@ function registerApiRoutes(app, appName) {
 
   app.get('/api/weather/cities', (_req, res) => {
     res.json({
-      defaultCityId: defaultWeatherCityId,
-      cities: sortedWeatherCities.map(({ id, name }) => ({ id, name }))
+      defaultCityId: getDefaultWeatherCityId(),
+      cities: getSortedWeatherCities().map(({ id, name }) => ({ id, name }))
     });
   });
 
   app.get('/api/weather/current', async (req, res) => {
     try {
+      const weatherCities = getWeatherCities();
+      const defaultWeatherCityId = getDefaultWeatherCityId();
       const requestedCityId = typeof req.query.city === 'string' ? req.query.city : defaultWeatherCityId;
       const city = weatherCities.find((entry) => entry.id === requestedCityId) || weatherCities.find((entry) => entry.id === defaultWeatherCityId);
       const resolvedCoordinates = await resolveWeatherCityCoordinates(city);
@@ -1691,6 +2173,8 @@ function registerApiRoutes(app, appName) {
 
 registerApiRoutes(tvApp, 'tv');
 registerApiRoutes(remoteApp, 'remote');
+registerRtspRelayRoutes(tvApp);
+registerRtspRelayRoutes(remoteApp);
 
 tvApp.use(express.static(path.join(__dirname, 'public')));
 remoteApp.use(express.static(path.join(__dirname, 'public-remote')));

@@ -229,6 +229,8 @@ CHANNEL12_URL=https://your-stream-12.m3u8
 CHANNEL12_FALLBACK_URLS=
 CHANNEL13_URL=https://your-stream-13.m3u8
 CHANNEL13_FALLBACK_URLS=
+CHANNEL16_URL=rtsp://user:password@camera.local:554/Streaming/Channels/102
+CHANNEL16_FALLBACK_URLS=
 DEFAULT_CHANNEL_ID=13
 
 DEFAULT_VOLUME=70
@@ -255,6 +257,7 @@ Live channels:
 - `11`
 - `12`
 - `13`
+- `16`
 
 Built-in screens:
 
@@ -265,6 +268,10 @@ Each live channel supports:
 
 - `CHANNEL##_URL`
 - `CHANNEL##_FALLBACK_URLS`
+
+`CHANNEL##_URL` can be either an HLS URL or an `rtsp://` URL.
+
+When a channel is configured with RTSP, the server relays it to local HLS with `ffmpeg` so the TV browser can play it.
 
 Fallback URLs are comma-separated:
 

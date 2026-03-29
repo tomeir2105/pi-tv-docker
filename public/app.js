@@ -1,6 +1,7 @@
 const channelButtons = document.getElementById('channelButtons');
 const newsButton = document.getElementById('newsButton');
 const weatherButton = document.getElementById('weatherButton');
+const setupButton = document.getElementById('setupButton');
 const muteButton = document.getElementById('muteButton');
 const fullscreenButton = document.getElementById('fullscreenButton');
 const statusText = document.getElementById('statusText');
@@ -8,11 +9,13 @@ const videoWrap = document.getElementById('videoWrap');
 const weatherView = document.getElementById('weatherView');
 const alertsView = document.getElementById('alertsView');
 const emergencyView = document.getElementById('emergencyView');
+const setupView = document.getElementById('setupView');
 const emergencyGrid = document.getElementById('emergencyGrid');
 const emergencyEmpty = document.getElementById('emergencyEmpty');
 const standbyScreen = document.getElementById('standbyScreen');
 const sleepScreen = document.getElementById('sleepScreen');
 const weatherCitySelect = document.getElementById('weatherCitySelect');
+const weatherPanelCitySelect = document.getElementById('weatherPanelCitySelect');
 const weatherCityTitle = document.getElementById('weatherCityTitle');
 const weatherFavoriteButton = document.getElementById('weatherFavoriteButton');
 const weatherIcon = document.getElementById('weatherIcon');
@@ -599,6 +602,18 @@ function isSpecialChannel(channel) {
 }
 
 function getChannelButtonLabel(channel) {
+  if (channel?.id === '16') {
+    return `
+      <span class="camera-channel-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false">
+          <path d="M6.5 8.5h8a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-8a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>
+          <path d="M16.5 11.2l3-1.9v7.4l-3-1.9z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>
+          <path d="M8.4 8.5l1-1.8h2.8l1 1.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+      </span>
+    `;
+  }
+
   if (isEmergencyChannel(channel)) {
     return '☎';
   }
@@ -647,6 +662,7 @@ function hideScreenViews() {
   weatherView.classList.add('hidden');
   alertsView.classList.add('hidden');
   emergencyView.classList.add('hidden');
+  setupView?.classList.add('hidden');
 }
 
 function stopAlertsRefresh() {
@@ -697,6 +713,14 @@ function canRunAlertsNewsAutoscroll() {
   );
 }
 
+function isCompactTvLayout() {
+  return window.matchMedia('(max-width: 980px)').matches;
+}
+
+function shouldUseGentleLiveRecovery() {
+  return isCompactTvLayout();
+}
+
 function animateAlertsNewsScroll(targetScrollTop, durationMs, onComplete) {
   const startScrollTop = alertsNewsList.scrollTop;
   const scrollDistance = targetScrollTop - startScrollTop;
@@ -728,7 +752,8 @@ function animateAlertsNewsScroll(targetScrollTop, durationMs, onComplete) {
 function getAlertsNewsScrollDurationMs(scrollDistance) {
   const viewportHeight = Math.max(1, alertsNewsList.clientHeight);
   const normalizedDistance = Math.max(1, Math.abs(scrollDistance));
-  return Math.max(1000, (normalizedDistance / viewportHeight) * alertsNewsScrollDurationMs);
+  const durationMultiplier = isCompactTvLayout() ? 0.45 : 1;
+  return Math.max(800, (normalizedDistance / viewportHeight) * alertsNewsScrollDurationMs * durationMultiplier);
 }
 
 function startAlertsNewsAutoscroll() {
@@ -757,13 +782,13 @@ function startAlertsNewsAutoscroll() {
 
       alertsNewsScrollTimeout = setTimeout(() => {
         scrollCycle(direction === 'down' ? 'up' : 'down');
-      }, alertsNewsScrollPauseMs);
+      }, isCompactTvLayout() ? Math.min(900, alertsNewsScrollPauseMs) : alertsNewsScrollPauseMs);
     });
   }
 
   alertsNewsScrollTimeout = setTimeout(() => {
     scrollCycle(alertsNewsScrollDirection);
-  }, alertsNewsScrollPauseMs);
+  }, isCompactTvLayout() ? Math.min(900, alertsNewsScrollPauseMs) : alertsNewsScrollPauseMs);
 }
 
 function renderAlertsNews(items = [], fetchedAt = null) {
@@ -790,8 +815,8 @@ function renderAlertsNews(items = [], fetchedAt = null) {
 
     article.innerHTML = `
       <div class="alerts-news-line" dir="rtl">
-        <span class="alerts-news-source" dir="rtl">${sourceText}</span>
         <a class="alerts-news-title" dir="rtl" href="${safeHref}" target="_blank" rel="noopener noreferrer">${item.title || 'Untitled headline'}</a>
+        <span class="alerts-news-source" dir="rtl">${sourceText}</span>
       </div>
     `;
     alertsNewsList.appendChild(article);
@@ -1049,6 +1074,11 @@ function updateStatusForState() {
     return;
   }
 
+  if (currentMode === 'setup') {
+    statusText.textContent = 'Setup screen ready';
+    return;
+  }
+
   if (!currentChannelId) {
     statusText.textContent = currentPlayback === 'paused' ? 'Playback paused' : 'Select a channel';
     return;
@@ -1300,14 +1330,16 @@ function buildWeatherInsight({ current, daily, hourly, currentIndex }) {
 function populateWeatherCityOptions(cities, defaultCityId) {
   weatherCities = cities;
   currentWeatherCityId = defaultCityId || currentWeatherCityId;
-  weatherCitySelect.innerHTML = '';
+  [weatherCitySelect, weatherPanelCitySelect].filter(Boolean).forEach((selectElement) => {
+    selectElement.innerHTML = '';
 
-  cities.forEach((city) => {
-    const option = document.createElement('option');
-    option.value = city.id;
-    option.textContent = city.name;
-    option.selected = city.id === currentWeatherCityId;
-    weatherCitySelect.appendChild(option);
+    cities.forEach((city) => {
+      const option = document.createElement('option');
+      option.value = city.id;
+      option.textContent = city.name;
+      option.selected = city.id === currentWeatherCityId;
+      selectElement.appendChild(option);
+    });
   });
 }
 
@@ -1480,6 +1512,14 @@ function applyPlaybackState(playback, options = {}) {
     return;
   }
 
+  if (currentMode === 'setup') {
+    hideScreenViews();
+    setupView?.classList.remove('hidden');
+    stopWeatherAutoscroll();
+    updateStatusForState();
+    return;
+  }
+
   stopWeatherAutoscroll();
   videoWrap.classList.remove('hidden');
 
@@ -1539,6 +1579,11 @@ function getPreferredAudioTrackIndex(audioTracks = []) {
   if (nonPolishIndex !== -1) return nonPolishIndex;
 
   return 0;
+}
+
+function applyVideoPresentation(channel) {
+  const shouldFitFrame = Boolean(channel?.usesRtspRelay);
+  videoWrap.classList.toggle('fit-frame', shouldFitFrame);
 }
 
 function playChannel(channel, options = {}) {
@@ -1604,6 +1649,7 @@ function playChannel(channel, options = {}) {
   emergencyView.classList.add('hidden');
   updateScreenOverlays(playback);
   videoWrap.classList.remove('hidden');
+  applyVideoPresentation(channel);
   stopAlertsRefresh();
 
   stopCurrentPlayback();
@@ -1727,8 +1773,10 @@ function playChannel(channel, options = {}) {
 
         if (!data?.fatal) {
           if (detail === 'bufferStalledError') {
-            hls.startLoad();
-            schedulePlaybackRetry(250);
+            if (!shouldUseGentleLiveRecovery()) {
+              hls.startLoad();
+              schedulePlaybackRetry(250);
+            }
             return;
           }
 
@@ -1845,6 +1893,9 @@ async function showWeather(options = {}) {
     const data = await response.json();
     currentWeatherCityId = data.city?.id || cityId || currentWeatherCityId;
     weatherCitySelect.value = currentWeatherCityId;
+    if (weatherPanelCitySelect) {
+      weatherPanelCitySelect.value = currentWeatherCityId;
+    }
     updateFavoriteButton();
 
     const current = data.current;
@@ -1980,6 +2031,27 @@ function showEmergency(options = {}) {
   }
 }
 
+function showSetup(options = {}) {
+  const { playback = currentPlayback } = options;
+
+  currentMode = 'setup';
+  currentChannelId = null;
+
+  clearActiveButtons();
+  setupButton?.classList.add('active');
+
+  cancelPendingPlayback();
+  stopAlertsRefresh();
+  stopCurrentPlayback();
+  hideScreenViews();
+  updateScreenOverlays(playback);
+  setupView?.classList.remove('hidden');
+  stopWeatherAutoscroll();
+
+  statusText.textContent = 'Setup screen ready';
+  applyPlaybackState(playback);
+}
+
 async function applyControlState(state) {
   if (!state || typeof state !== 'object') return;
 
@@ -2045,6 +2117,9 @@ async function applyControlState(state) {
   if (typeof state.weatherCityId === 'string' && weatherCities.some((city) => city.id === state.weatherCityId)) {
     currentWeatherCityId = state.weatherCityId;
     weatherCitySelect.value = currentWeatherCityId;
+    if (weatherPanelCitySelect) {
+      weatherPanelCitySelect.value = currentWeatherCityId;
+    }
   }
 
   if (state.weatherAutoscroll === 'playing' || state.weatherAutoscroll === 'paused') {
@@ -2130,7 +2205,7 @@ function setupControlSync() {
 function setupIdleDarkMode() {
   registerActivity(Date.now());
 
-  ['pointerdown', 'keydown', 'touchstart'].forEach((eventName) => {
+  ['pointerdown', 'pointermove', 'mousemove', 'keydown', 'touchstart'].forEach((eventName) => {
     document.addEventListener(eventName, () => {
       registerLocalActivity();
     }, { passive: true });
@@ -2218,6 +2293,10 @@ function setupPlayerEvents() {
         readyState: player.readyState,
         networkState: player.networkState
       });
+      if (shouldUseGentleLiveRecovery() && player.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
+        updateStatusForState();
+        return;
+      }
       statusText.textContent = 'Playback paused unexpectedly. Retrying...';
       schedulePlaybackRetry(120);
       updateStatusForState();
@@ -2233,8 +2312,10 @@ function setupPlayerEvents() {
     });
 
     if (currentMode === 'channel' && currentPlayback === 'playing') {
-      statusText.textContent = 'Stream stalled. Retrying...';
-      schedulePlaybackRetry();
+      statusText.textContent = shouldUseGentleLiveRecovery() ? 'Stream buffering...' : 'Stream stalled. Retrying...';
+      if (!shouldUseGentleLiveRecovery()) {
+        schedulePlaybackRetry();
+      }
     }
   });
 
@@ -2427,14 +2508,30 @@ async function init() {
 
     showWeather();
   });
+  setupButton?.addEventListener('click', () => {
+    if (currentMode === 'setup') {
+      returnToLiveChannel();
+      return;
+    }
+
+    showSetup();
+  });
   muteButton?.addEventListener('click', () => {
     setMuted(!isEffectivelyMuted());
   });
   weatherCitySelect.addEventListener('change', () => {
     currentWeatherCityId = weatherCitySelect.value;
+    if (weatherPanelCitySelect) {
+      weatherPanelCitySelect.value = currentWeatherCityId;
+    }
     if (currentMode === 'weather') {
       showWeather({ sync: true, playback: currentPlayback, cityId: currentWeatherCityId });
     }
+  });
+  weatherPanelCitySelect?.addEventListener('change', () => {
+    currentWeatherCityId = weatherPanelCitySelect.value;
+    weatherCitySelect.value = currentWeatherCityId;
+    showWeather({ sync: true, playback: 'playing', cityId: currentWeatherCityId });
   });
   weatherFavoriteButton.addEventListener('click', () => {
     favoriteWeatherCityId = currentWeatherCityId;
@@ -2451,7 +2548,7 @@ async function init() {
     }
   });
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && (currentMode === 'weather' || currentMode === 'emergency')) {
+    if (event.key === 'Escape' && (currentMode === 'weather' || currentMode === 'emergency' || currentMode === 'setup')) {
       if (currentFullscreen) {
         return;
       }

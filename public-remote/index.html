@@ -79,7 +79,9 @@
         </div>
 
         <aside class="remote-side" aria-label="Volume control">
-          <div class="menu-wrap side-actions">
+          <section class="remote-section display-cluster">
+            <div class="section-label">Display</div>
+            <div class="menu-wrap side-actions">
             <button
               id="menuButton"
               class="btn utility-cap menu-cap"
@@ -131,11 +133,12 @@
                 <span class="menu-item-label">Beep</span>
               </button>
             </div>
-          </div>
+            </div>
+          </section>
           <section class="remote-section volume-cluster">
             <div class="volume-head">
               <div class="section-label">Volume</div>
-              <div id="volumeLabel">70%</div>
+              <div id="volumeLabel" title="Volume level">70%</div>
               <button id="muteButtonRemote" class="btn mute-toggle" type="button" aria-label="Mute audio" title="Mute audio">
                 <span class="mute-toggle-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" focusable="false">
@@ -148,7 +151,7 @@
             <div class="volume-panel">
               <div class="volume-rail">
                 <span class="volume-mark volume-up">+</span>
-                <input id="volumeSlider" type="range" min="0" max="100" step="1" value="70" />
+                <input id="volumeSlider" type="range" min="0" max="100" step="1" value="70" title="Volume" aria-label="Volume" />
                 <span class="volume-mark volume-down">-</span>
               </div>
             </div>

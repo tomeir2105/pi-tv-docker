@@ -167,12 +167,86 @@
               <div class="emergency-layout">
                 <header class="emergency-header">
                   <div class="emergency-kicker">Emergency Contacts</div>
-                  <h2>Important Numbers</h2>
-                  <p>For quick access during urgent situations.</p>
                 </header>
 
                 <div class="emergency-grid" id="emergencyGrid" dir="rtl"></div>
                 <div class="emergency-empty hidden" id="emergencyEmpty">Add `EMERGENCY_CONTACTS` in your local `.env` to show emergency numbers here.</div>
+              </div>
+            </div>
+
+            <div class="setup-view hidden" id="setupView">
+              <div class="setup-layout">
+                <header class="setup-header">
+                  <div class="setup-kicker">Setup</div>
+                  <h2>TV Configuration</h2>
+                  <p>Update channels, emergency contacts, weather cities, and news feeds.</p>
+                </header>
+
+                <form class="setup-form" id="setupForm">
+                  <section class="setup-section">
+                    <h3>Channel URLs</h3>
+                    <label class="setup-field">
+                      <span>Channel 11 URL</span>
+                      <input id="setupChannel11" type="text" autocomplete="off" spellcheck="false" />
+                    </label>
+                    <label class="setup-field">
+                      <span>Channel 12 URL</span>
+                      <input id="setupChannel12" type="text" autocomplete="off" spellcheck="false" />
+                    </label>
+                    <label class="setup-field">
+                      <span>Channel 13 URL</span>
+                      <input id="setupChannel13" type="text" autocomplete="off" spellcheck="false" />
+                    </label>
+                    <label class="setup-field">
+                      <span>Camera / RTSP URL</span>
+                      <input id="setupChannel16" type="text" autocomplete="off" spellcheck="false" />
+                    </label>
+                  </section>
+
+                  <section class="setup-section">
+                    <h3>Emergency Contacts</h3>
+                    <label class="setup-field">
+                      <span>JSON array</span>
+                      <textarea id="setupEmergencyContacts" rows="6" spellcheck="false"></textarea>
+                    </label>
+                  </section>
+
+                  <section class="setup-section">
+                    <h3>Weather Cities</h3>
+                    <label class="setup-field">
+                      <span>JSON object</span>
+                      <textarea id="setupWeatherCities" rows="7" spellcheck="false"></textarea>
+                    </label>
+                  </section>
+
+                  <section class="setup-section">
+                    <h3>News / RSS</h3>
+                    <label class="setup-field">
+                      <span>Ynet URL</span>
+                      <input id="setupYnetUrl" type="text" autocomplete="off" spellcheck="false" />
+                    </label>
+                    <label class="setup-field">
+                      <span>Mako RSS URL</span>
+                      <input id="setupMakoUrl" type="text" autocomplete="off" spellcheck="false" />
+                    </label>
+                    <label class="setup-field">
+                      <span>Israel Hayom URL</span>
+                      <input id="setupIsraelHayomUrl" type="text" autocomplete="off" spellcheck="false" />
+                    </label>
+                    <label class="setup-field">
+                      <span>Kan Breaking URL</span>
+                      <input id="setupKanBreakingUrl" type="text" autocomplete="off" spellcheck="false" />
+                    </label>
+                    <label class="setup-field">
+                      <span>Kan Headlines URL</span>
+                      <input id="setupKanHeadlinesUrl" type="text" autocomplete="off" spellcheck="false" />
+                    </label>
+                  </section>
+
+                  <div class="setup-actions">
+                    <button class="setup-save-button" id="setupSaveButton" type="submit">Save Settings</button>
+                  </div>
+                </form>
               </div>
             </div>
 
@@ -189,8 +263,6 @@
         </div>
 
         <aside class="control-panel" aria-label="TV controls">
-          <h1 class="logo">PI TV</h1>
-
           <section class="channel-panel" aria-label="Channel controls">
             <div class="channel-panel-label">Channels</div>
             <div class="btn-group">
@@ -213,7 +285,18 @@
                   </svg>
                 </span>
               </button>
+              <button class="nav-btn setup-btn" id="setupButton" type="button" aria-label="Setup" title="Setup">
+                <span class="channel-number setup-icon" aria-hidden="true">⚙</span>
+              </button>
             </div>
+          </section>
+
+          <section class="weather-panel" aria-label="Weather city controls">
+            <div class="channel-panel-label">Weather City</div>
+            <label class="weather-city-picker weather-city-picker-panel">
+              <span>City</span>
+              <select id="weatherPanelCitySelect" aria-label="Select weather city on TV"></select>
+            </label>
           </section>
 
           <section class="remote-qr-card" aria-label="Remote control barcode">
@@ -236,7 +319,6 @@
               <button class="dial dial-action fullscreen-dial" id="fullscreenButton" type="button" aria-label="Enter fullscreen" title="Enter fullscreen">
                 <span class="dial-icon" aria-hidden="true">&#9974;</span>
               </button>
-              <div class="dial-label">Fullscreen</div>
             </div>
             <div class="dial-stack">
               <div
@@ -249,7 +331,6 @@
                 aria-valuemax="100"
                 aria-valuenow="70"
               ></div>
-              <div class="dial-label">Volume</div>
             </div>
             <div class="dial-stack mute-dial-stack">
               <button class="dial dial-action mute-dial" id="muteButton" type="button" aria-label="Mute audio" title="Mute audio">
