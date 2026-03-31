@@ -38,6 +38,21 @@ let audioRedirectAttemptToken = 0;
 let beepHoldInterval = null;
 let beepHoldInFlight = false;
 
+function getRemoteChannelMarkup(channel) {
+  if (channel?.id === '16') {
+    return `
+      <span class="channel-number remote-camera-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false">
+          <rect x="4.5" y="7" width="10.5" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"></rect>
+          <path d="M15 10.2l4.5-2.4v8.4L15 13.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>
+        </svg>
+      </span>
+    `;
+  }
+
+  return `<span class="channel-number">${channel.id}</span>`;
+}
+
 function isAlertsChannel(channel) {
   return channel?.type === 'alerts';
 }
@@ -488,7 +503,7 @@ async function init() {
     button.type = 'button';
     button.className = 'btn channel-key';
     button.dataset.channelId = channel.id;
-    button.innerHTML = `<span class="channel-number">${channel.id}</span>`;
+    button.innerHTML = getRemoteChannelMarkup(channel);
     button.addEventListener('click', async () => {
       await postControlState({ mode: 'channel', channelId: channel.id, playback: 'playing' });
     });
