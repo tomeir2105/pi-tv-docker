@@ -215,8 +215,8 @@ body {
 
 .remote-menu {
   position: absolute;
-  top: calc(100% + 10px);
-  right: 0;
+  top: 0;
+  right: calc(100% + 4px);
   z-index: 6;
   width: 182px;
   display: grid;
@@ -330,6 +330,74 @@ body {
   bottom: 0;
   left: 0;
   border-width: 0 0 2px 2px;
+}
+
+.fullscreen-btn-mini {
+  width: auto;
+  height: auto;
+  padding: 8px 12px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  color: #fff2cd;
+  background: linear-gradient(180deg, #3e444d, #20252c);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
+  margin-top: 12px;
+  border: 0;
+}
+
+.fullscreen-btn-mini:hover {
+  filter: brightness(1.05);
+}
+
+.fullscreen-btn-mini:active {
+  transform: translateY(2px);
+}
+
+.fullscreen-btn-mini:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.fullscreen-icon-mini {
+  position: relative;
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
+.fullscreen-icon-mini span {
+  position: absolute;
+  display: block;
+  width: 5px;
+  height: 5px;
+  border-color: currentColor;
+  border-style: solid;
+}
+
+.fullscreen-icon-mini span:nth-child(1) {
+  top: 0;
+  left: 0;
+  border-width: 1.5px 0 0 1.5px;
+}
+
+.fullscreen-icon-mini span:nth-child(2) {
+  top: 0;
+  right: 0;
+  border-width: 1.5px 1.5px 0 0;
+}
+
+.fullscreen-icon-mini span:nth-child(3) {
+  right: 0;
+  bottom: 0;
+  border-width: 0 1.5px 1.5px 0;
+}
+
+.fullscreen-icon-mini span:nth-child(4) {
+  bottom: 0;
+  left: 0;
+  border-width: 0 0 1.5px 1.5px;
 }
 
 .refresh-icon {

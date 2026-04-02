@@ -7,6 +7,7 @@ const menuBackdrop = document.getElementById('menuBackdrop');
 const remoteMenu = document.getElementById('remoteMenu');
 const minimizeButton = document.getElementById('minimizeButton');
 const fullscreenButton = document.getElementById('fullscreenButton');
+const fullscreenButtonVolume = document.getElementById('fullscreenButtonVolume');
 const refreshButton = document.getElementById('refreshButton');
 const backButton = document.getElementById('backButton');
 const powerButton = document.getElementById('powerButton');
@@ -405,6 +406,9 @@ function applyControlState(state) {
   fullscreenButton.classList.toggle('active', state.fullscreen === true);
   fullscreenButton.title = state.fullscreen === true ? 'Exit fullscreen' : 'Enter fullscreen';
   fullscreenButton.setAttribute('aria-label', state.fullscreen === true ? 'Exit fullscreen' : 'Enter fullscreen');
+  fullscreenButtonVolume.classList.toggle('active', state.fullscreen === true);
+  fullscreenButtonVolume.title = state.fullscreen === true ? 'Exit fullscreen' : 'Enter fullscreen';
+  fullscreenButtonVolume.setAttribute('aria-label', state.fullscreen === true ? 'Exit fullscreen' : 'Enter fullscreen');
   minimizeButton.title = state.fullscreen === true ? 'Minimize TV' : 'TV is already minimized';
   minimizeButton.setAttribute('aria-label', state.fullscreen === true ? 'Minimize TV' : 'TV is already minimized');
   powerButton.classList.toggle('active', state.playback === 'stopped');
@@ -567,6 +571,11 @@ async function init() {
     const shouldEnableFullscreen = !fullscreenButton.classList.contains('active');
     await postControlState({ fullscreen: shouldEnableFullscreen });
     closeMenu();
+  });
+
+  fullscreenButtonVolume.addEventListener('click', async () => {
+    const shouldEnableFullscreen = !fullscreenButtonVolume.classList.contains('active');
+    await postControlState({ fullscreen: shouldEnableFullscreen });
   });
 
   refreshButton.addEventListener('click', async () => {
